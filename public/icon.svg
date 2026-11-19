@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="112" fill="#c0283f"/>
-  <rect x="132" y="92" width="228" height="300" rx="22" fill="#ffffff"/>
-  <rect x="168" y="150" width="156" height="18" rx="9" fill="#f2c4cb"/>
-  <rect x="168" y="196" width="120" height="18" rx="9" fill="#f2c4cb"/>
-  <rect x="168" y="242" width="144" height="18" rx="9" fill="#f2c4cb"/>
-  <circle cx="344" cy="348" r="90" fill="#17141a" stroke="#c0283f" stroke-width="16"/>
-  <path d="M300 350 l30 30 l56 -60" fill="none" stroke="#ffffff" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect width="512" height="512" rx="112" fill="#121212"/>
+  <rect x="96" y="72" width="80" height="22" fill="#00aeef"/><rect x="176" y="72" width="80" height="22" fill="#ec008c"/>
+  <rect x="256" y="72" width="80" height="22" fill="#fff200"/><rect x="336" y="72" width="80" height="22" fill="#ffffff"/>
+  <rect x="120" y="136" width="272" height="300" fill="#f7f5ef"/>
+  <g stroke="#ffffff" stroke-width="6" fill="none"><circle cx="120" cy="136" r="14"/><path d="M120 108v56M92 136h56"/><circle cx="392" cy="436" r="14"/><path d="M392 408v56M364 436h56"/></g>
+  <path d="M168 330h176M168 372h120" stroke="#141414" stroke-width="18"/>
+  <g transform="rotate(-10 256 236)"><rect x="168" y="192" width="176" height="88" fill="none" stroke="#ec008c" stroke-width="14"/><path d="M212 238l30 28 58-62" fill="none" stroke="#ec008c" stroke-width="20" stroke-linecap="square"/></g>
 </svg>

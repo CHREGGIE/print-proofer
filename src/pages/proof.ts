@@ -68,6 +68,7 @@ export function initProof(opts: { openSettings: () => void }) {
     renderHistory();
   };
   renderHistory();
+  renderJobNo();
 }
 
 function renderEngine() {
@@ -99,7 +100,8 @@ export function addSharedText(t: string) {
 function renderThumbs() {
   const has = picked.length > 0;
   $("captureSlot").hidden = has;
-  thumbs.hidden = !has;
+  $("thumbsWrap").hidden = !has;
+  $("pageCount").textContent = `${picked.length} PAGE${picked.length === 1 ? "" : "S"}`;
   const tiles: HTMLElement[] = picked.map((p, i) => {
     const rm = el("button", { class: "thumb-x", ariaLabel: `Remove page ${i + 1}` }, iconEl("x", 16));
     rm.onclick = () => {
@@ -119,6 +121,10 @@ function renderThumbs() {
   }
   thumbs.replaceChildren(...tiles);
   updateCheckBtn();
+}
+
+export function renderJobNo() {
+  $("jobNo").textContent = `JOB ${String(Number(settings.raw.get("pp.jobs") || "0") + 1).padStart(4, "0")}`;
 }
 
 function updateCheckBtn() {
@@ -174,6 +180,8 @@ async function runCheck() {
       if (controller.signal.aborted) throw new ProofError("Cancelled.");
     }
     renderResult(result, useClaude ? "claude" : "offline");
+    settings.raw.set("pp.jobs", String(Number(settings.raw.get("pp.jobs") || "0") + 1));
+    renderJobNo();
     saveHistory(result);
   } catch (err) {
     showError(err instanceof ProofError ? err.message : `Something went wrong: ${err instanceof Error ? err.message : String(err)}`);
@@ -187,7 +195,6 @@ async function runCheck() {
 }
 
 const SEVERITY_ORDER = { error: 0, warning: 1, suggestion: 2 } as const;
-const SEVERITY_LABEL = { error: "Fix", warning: "Check", suggestion: "Idea" } as const;
 const plural = (n: number, one: string, many = one + "s") => `${n} ${n === 1 ? one : many}`;
 
 function renderResult(r: ProofResult, engine?: "offline" | "claude") {
@@ -196,32 +203,42 @@ function renderResult(r: ProofResult, engine?: "offline" | "claude") {
   issues.forEach((i) => counts[i.severity]++);
   const clean = counts.error === 0 && counts.warning === 0;
   const state = clean ? "ok" : counts.error ? "bad" : "warn";
-  const headline = clean
-    ? "Ready to print"
-    : counts.error
-      ? `Fix ${plural(counts.error, "mistake")} before printing`
-      : `Double-check ${plural(counts.warning, "thing")}`;
 
-  summaryEl.className = `panel verdict ${state}`;
-  const text = el("div", { class: "grow" }, el("h2", { textContent: headline }), el("p", { textContent: r.summary }));
+  const big = clean ? 0 : counts.error || counts.warning;
+  const label = clean
+    ? "Mistakes found. Ready to print."
+    : counts.error
+      ? `${counts.error === 1 ? "Mistake" : "Mistakes"} to fix before it prints`
+      : `${counts.warning === 1 ? "Thing" : "Things"} to check before it prints`;
+  const stamp = { ok: ["Approved", "OK to print"], bad: ["Not ready", "Hold the press"], warn: ["Check first", "Then print"] }[state];
+
+  summaryEl.className = `sheet verdict ${state}`;
+  const legend = el(
+    "div",
+    { class: "legend" },
+    el("span", {}, el("i", { class: "dot m" }), plural(counts.error, "mistake")),
+    el("span", {}, el("i", { class: "dot y" }), `${counts.warning} to check`),
+    el("span", {}, el("i", { class: "dot c" }), plural(counts.suggestion, "idea")),
+  );
+  summaryEl.replaceChildren(
+    el("div", { class: "big", textContent: String(big) }),
+    el("div", { class: "lab", textContent: label }),
+    el("div", { class: `stamp ${state}` }, stamp[0], el("small", { textContent: stamp[1] })),
+    legend,
+    el("p", { class: "summary", textContent: r.summary }),
+  );
   if (engine === "offline" && settings.apiKey) {
-    const b = el("button", { class: "btn small", textContent: "Also run the Claude check" });
+    const b = el("button", { class: "btn small", textContent: "Also run Claude" });
     b.onclick = () => {
       settings.engine = "claude";
       renderEngine();
       runCheck();
     };
-    text.append(b);
+    summaryEl.append(b);
   }
-  const kpi = (n: number, label: string, hot: boolean) =>
-    el("div", { class: "kpi" }, el("div", { class: `v ${n === 0 ? "zero" : hot ? "hot" : ""}`, textContent: String(n) }), el("div", { class: "l", textContent: label }));
-  summaryEl.replaceChildren(
-    el("div", { class: "verdict-top" }, el("div", { class: "verdict-mark" }, iconEl(clean ? "check" : "alert", 22)), text),
-    el("div", { class: "kpis" }, kpi(counts.error, "Mistakes", true), kpi(counts.warning, "To check", false), kpi(counts.suggestion, "Ideas", false)),
-  );
 
-  $("issueCount").textContent = issues.length ? plural(issues.length, "item") : "";
-  issuesEl.replaceChildren(...(issues.length ? issues.map(renderIssue) : [el("li", { class: "empty-row", textContent: "Nothing to correct." })]));
+  $("issueCount").textContent = issues.length ? `${issues.length} ITEM${issues.length === 1 ? "" : "S"}` : "";
+  issuesEl.replaceChildren(...(issues.length ? issues.map(renderIssue) : [el("li", {}, el("span", { class: "empty-row", textContent: "Nothing to correct. Clean proof." }))]));
   transcriptionEl.replaceChildren(markUp(r.transcription, issues));
   correctedEl.textContent = r.corrected_text;
   $<HTMLButtonElement>("copyBtn").onclick = (e) => copyText(e.currentTarget as HTMLButtonElement, r.corrected_text);
@@ -231,25 +248,20 @@ function renderResult(r: ProofResult, engine?: "offline" | "claude") {
 }
 
 function renderIssue(i: Issue): HTMLElement {
-  const top = el(
-    "div",
-    { class: "issue-top" },
-    el("span", { class: `pill ${i.severity}`, textContent: SEVERITY_LABEL[i.severity] }),
-    el("span", { class: "pill cat", textContent: i.category }),
+  const line = i.location.match(/line\s*(\d+)/i);
+  const where = line ? `Line ${line[1].padStart(2, "0")}` : i.category.slice(0, 7);
+  const li = el("li", { class: i.severity }, el("span", { class: "ln" }, el("i"), where));
+  li.append(
+    i.original
+      ? el(
+          "div",
+          { class: "change" },
+          el("del", { textContent: i.original }),
+          el("span", { class: "arrow", textContent: "→" }),
+          el("ins", { textContent: i.suggestion && i.suggestion !== "?" ? i.suggestion : "check" }),
+        )
+      : el("div", { class: "change", textContent: i.category[0].toUpperCase() + i.category.slice(1) }),
   );
-  if (i.location) top.append(el("span", { class: "loc", textContent: i.location }));
-  const li = el("li", {}, top);
-  if (i.original) {
-    li.append(
-      el(
-        "div",
-        { class: "change" },
-        el("del", { textContent: i.original }),
-        el("span", { class: "arrow", textContent: "→" }),
-        el("ins", { textContent: i.suggestion && i.suggestion !== "?" ? i.suggestion : "check this" }),
-      ),
-    );
-  }
   li.append(el("p", { class: "why", textContent: i.explanation }));
   return li;
 }
@@ -319,7 +331,7 @@ function renderHistory() {
           el("span", { class: "t", textContent: first || "(no text)" }),
           el("span", { class: "meta", textContent: new Date(entry.at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) }),
         ),
-        el("span", { class: `pill ${errs ? "error" : "positive"}`, textContent: errs ? plural(errs, "mistake") : "Clean" }),
+        el("span", { class: `tag ${errs ? "m" : "c"}`, textContent: errs ? plural(errs, "mistake") : "Clean" }),
         iconEl("chevron", 18, "chev"),
       );
       btn.onclick = () => renderResult(entry.result);

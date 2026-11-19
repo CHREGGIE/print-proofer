@@ -97,7 +97,7 @@ function renderList() {
           el("span", { class: "meta", textContent: latest ? `${caps.length} capture${caps.length === 1 ? "" : "s"} · ${fmtDate(latest.at)}` : "No captures yet" }),
           prices ? el("span", { class: "meta", textContent: prices }) : "",
         ),
-        changes ? el("span", { class: "pill error", textContent: `${changes} new` }) : iconEl("chevron", 18, "chev"),
+        changes ? el("span", { class: "tag m", textContent: `${changes} changes` }) : iconEl("chevron", 18, "chev"),
       );
       b.onclick = () => open(c);
       return el("li", {}, b);
@@ -130,8 +130,8 @@ function renderDetail() {
     const d = diffCaptures(caps[1].entities, caps[0].entities);
     const rows: HTMLElement[] = [];
     const add = (label: string, x: { added: string[]; removed: string[] }) => {
-      for (const a of x.added) rows.push(el("li", {}, el("span", { class: "pill error", textContent: "New" }), el("span", { class: "grow" }, a, " ", el("span", { class: "what", textContent: label }))));
-      for (const r of x.removed) rows.push(el("li", {}, el("span", { class: "pill neutral", textContent: "Gone" }), el("span", { class: "grow" }, el("span", { class: "gone", textContent: r }), " ", el("span", { class: "what", textContent: label }))));
+      for (const a of x.added) rows.push(el("li", {}, el("span", { class: "tag m", textContent: "New" }), el("span", { class: "grow" }, a, " ", el("span", { class: "what", textContent: label }))));
+      for (const r of x.removed) rows.push(el("li", {}, el("span", { class: "tag g", textContent: "Gone" }), el("span", { class: "grow" }, el("span", { class: "gone", textContent: r }), " ", el("span", { class: "what", textContent: label }))));
     };
     add("price", d.prices);
     add("offer", d.offers);
@@ -151,7 +151,7 @@ function renderDetail() {
       const e = cap.entities;
       const chips = (xs: string[], cls: string) => xs.slice(0, 12).map((x) => el("span", { class: `chip static ${cls}`, textContent: x }));
       const details = el("details", {}, el("summary", { textContent: "All text" }), el("div", { class: "textblock", textContent: cap.text || "(no text found)" }));
-      const rm = el("button", { class: "btn small ghost", ariaLabel: "Delete capture" }, iconEl("trash", 16));
+      const rm = el("button", { class: "icon-btn small", ariaLabel: "Delete capture" }, iconEl("trash", 18));
       rm.onclick = async () => {
         await db.del("captures", cap.id);
         captures = captures.filter((x) => x.id !== cap.id);
@@ -160,7 +160,7 @@ function renderDetail() {
       const found = e.prices.length + e.offers.length + e.promoCodes.length;
       return el(
         "article",
-        { class: "panel capture" },
+        { class: "sheet capture" },
         el("img", { src: cap.thumb, alt: "" }),
         el(
           "div",

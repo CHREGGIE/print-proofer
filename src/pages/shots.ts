@@ -177,7 +177,7 @@ function render() {
   if (matches.length > 120) list.append(el("p", { class: "meta", textContent: `Showing 120 of ${matches.length}. Search to narrow it down.` }));
 }
 
-const ICON: Record<Category, string> = { receipt: "receipt", tracking: "box", code: "code", other: "file" };
+const TAG: Record<Category, [string, string]> = { receipt: ["c", "Receipt"], tracking: ["y", "Tracking"], code: ["m", "Code"], other: ["g", "Other"] };
 
 function renderShot(s: Shot, terms: string[]): HTMLElement {
   const img = el("img", { src: s.thumb, alt: "", loading: "lazy" });
@@ -197,7 +197,7 @@ function renderShot(s: Shot, terms: string[]): HTMLElement {
   } else {
     actions.append(copyBtn(s.category === "code" ? "Copy code" : "Copy text", s.text));
   }
-  const titleRow = el("div", { class: "shot-title" }, iconEl(ICON[s.category], 18), el("span", { class: "grow", textContent: s.category === "other" ? s.label || "Screenshot" : s.label }));
+  const titleRow = el("div", { class: "shot-title" }, el("span", { class: "label", textContent: s.category === "other" ? s.label || "Screenshot" : s.label }));
   if (!s.mediaId) {
     const rm = el("button", { class: "icon-btn small", ariaLabel: "Remove" }, iconEl("trash", 18));
     rm.onclick = async () => {
@@ -216,7 +216,7 @@ function renderShot(s: Shot, terms: string[]): HTMLElement {
       "div",
       { class: "shot-main" },
       titleRow,
-      el("div", { class: "meta", textContent: fmtDate(s.taken) }),
+      el("div", { class: "shot-meta" }, el("span", { class: `tag ${TAG[s.category][0]}`, textContent: TAG[s.category][1] }), el("span", { class: "meta", textContent: fmtDate(s.taken) })),
       snippet(s.text, terms, s.category === "code"),
       actions,
     ),

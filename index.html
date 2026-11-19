@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#ffffff" />
+    <meta name="theme-color" content="#121212" />
     <meta name="description" content="Proofread print with your camera, search the text in every screenshot, pull text out of videos and track competitor prices." />
     <title>Print Proofer</title>
     <link rel="manifest" href="./manifest.webmanifest" />
@@ -11,16 +11,23 @@
     <link rel="apple-touch-icon" href="./icon-192.png" />
   </head>
   <body>
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+      <filter id="rough"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" result="n" /><feDisplacementMap in="SourceGraphic" in2="n" scale="3" /></filter>
+    </svg>
     <header class="topbar">
-      <a class="brand" href="#" data-goto="proof"><img src="./icon.svg" alt="" width="26" height="26" /><span>Print Proofer</span></a>
-      <button id="settingsBtn" class="icon-btn" aria-label="Settings"><i data-icon="settings" data-size="22"></i></button>
+      <div class="topbar-row">
+        <a class="brand" href="#">PRINT PROOFER</a>
+        <span class="job mono" id="jobNo"></span>
+        <button id="settingsBtn" class="icon-btn" aria-label="Settings"><i data-icon="settings" data-size="22"></i></button>
+      </div>
+      <div class="cmyk" aria-hidden="true"><i class="c"></i><i class="m"></i><i class="y"></i><i class="k"></i></div>
     </header>
 
     <nav class="tabbar" aria-label="Sections">
-      <button data-page="proof" class="active"><span class="tab-ic"><i data-icon="proof" data-size="22"></i></span><span>Proof</span></button>
-      <button data-page="shots"><span class="tab-ic"><i data-icon="shots" data-size="22"></i></span><span>Screenshots</span></button>
-      <button data-page="video"><span class="tab-ic"><i data-icon="video" data-size="22"></i></span><span>Video</span></button>
-      <button data-page="comp"><span class="tab-ic"><i data-icon="comp" data-size="22"></i></span><span>Competitors</span></button>
+      <button data-page="proof" class="active">PROOF</button>
+      <button data-page="shots">SCREENSHOTS</button>
+      <button data-page="video">VIDEO</button>
+      <button data-page="comp">RIVALS</button>
     </nav>
 
     <main>
@@ -31,47 +38,49 @@
           <p class="sub">Catch typos, wrong dates and broken numbers before it prints.</p>
         </div>
 
-        <section class="panel">
-          <div class="slot" id="captureSlot">
-            <div class="slot-ic"><i data-icon="camera" data-size="28"></i></div>
-            <p class="slot-text">Photograph the proof, or pick a screenshot</p>
+        <section class="sheet">
+          <div id="captureSlot">
+            <div class="slot-title">Drop the proof here</div>
+            <p class="slot-text">Photograph the flyer, card or sign, or pick a screenshot. Several pages are fine.</p>
             <div class="btn-row">
               <label class="btn primary">
-                <i data-icon="camera" data-size="18"></i> Take photo
+                <i data-icon="camera" data-size="20"></i> Take photo
                 <input id="cameraInput" type="file" accept="image/*" capture="environment" hidden />
               </label>
               <label class="btn">
-                <i data-icon="image" data-size="18"></i> Choose image
+                <i data-icon="image" data-size="20"></i> Choose
                 <input id="fileInput" type="file" accept="image/*" multiple hidden />
               </label>
             </div>
           </div>
-
-          <div id="thumbs" class="thumbs" hidden></div>
-
-          <div class="rows">
-            <details id="textDetails" class="row-disclosure">
-              <summary><span>Paste text instead</span><i data-icon="chevron" data-size="18" class="chev"></i></summary>
-              <textarea id="textInput" rows="5" placeholder="Paste the words you want checked"></textarea>
-            </details>
-            <details class="row-disclosure">
-              <summary><span>Notes for this check</span><i data-icon="chevron" data-size="18" class="chev"></i></summary>
-              <textarea id="notesInput" rows="3" placeholder="Names and facts that are right, e.g. Bella's Bakery, Saturday Dec 5, 2026"></textarea>
-            </details>
-            <div class="row-setting">
-              <span>Checker</span>
-              <div class="seg" role="radiogroup" aria-label="Checker">
-                <button data-engine="offline" role="radio">On this phone</button>
-                <button data-engine="claude" role="radio">Claude</button>
-              </div>
-            </div>
+          <div id="thumbsWrap" hidden>
+            <div class="thumbs-head"><h3>On the press</h3><span class="mono" id="pageCount"></span></div>
+            <div id="thumbs" class="thumbs"></div>
           </div>
-
-          <button id="checkBtn" class="btn primary block" disabled>Check for mistakes</button>
         </section>
 
+        <div class="rows">
+          <details id="textDetails" class="row-disclosure">
+            <summary><span>Paste text instead</span><i data-icon="chevron" data-size="18" class="chev"></i></summary>
+            <textarea id="textInput" rows="5" placeholder="Paste the words you want checked"></textarea>
+          </details>
+          <details class="row-disclosure">
+            <summary><span>Notes for this check</span><i data-icon="chevron" data-size="18" class="chev"></i></summary>
+            <textarea id="notesInput" rows="3" placeholder="Names and facts that are right, e.g. Bella's Bakery, Saturday Dec 5, 2026"></textarea>
+          </details>
+          <div class="row-setting">
+            <span>Checker</span>
+            <div class="seg" role="radiogroup" aria-label="Checker">
+              <button data-engine="offline" role="radio">Phone</button>
+              <button data-engine="claude" role="radio">Claude</button>
+            </div>
+          </div>
+        </div>
+
+        <button id="checkBtn" class="btn primary block" disabled>Check for mistakes</button>
+
         <section id="statusCard" class="panel status" hidden>
-          <div class="spinner" aria-hidden="true"></div>
+          <div class="spinner" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
           <div class="grow">
             <div id="statusText">Reading your proof…</div>
             <div class="meta" id="elapsed"></div>
@@ -82,16 +91,16 @@
         <section id="errorCard" class="notice negative" hidden></section>
 
         <section id="results" hidden>
-          <section class="panel verdict" id="summary"></section>
+          <section class="sheet verdict" id="summary"></section>
 
           <section class="panel flush">
-            <header class="panel-head"><h2>Corrections</h2><span class="meta" id="issueCount"></span></header>
+            <header class="panel-head"><h2>Corrections</h2><span class="mono meta" id="issueCount"></span></header>
             <ul id="issues" class="list issues"></ul>
           </section>
 
-          <section class="panel">
+          <section class="sheet">
             <header class="panel-head"><h2>Marked-up proof</h2></header>
-            <p class="meta legend"><span class="mk-del">struck</span> remove &nbsp; <span class="mk-ins">red</span> write in &nbsp; <span class="mk-q">underlined</span> check</p>
+            <p class="key"><span><span class="mk-del">struck</span> remove</span><span><span class="mk-ins" style="margin:0">red</span> write in</span><span><span class="mk-q">yellow</span> check</span><span><span class="mk-s">blue</span> idea</span></p>
             <div id="transcription" class="proofsheet"></div>
           </section>
 
@@ -100,11 +109,11 @@
             <div id="corrected" class="textblock"></div>
           </section>
 
-          <button id="newBtn" class="btn block">Check another proof</button>
+          <button id="newBtn" class="btn block">Next job</button>
         </section>
 
         <section id="historySection" class="panel flush" hidden>
-          <header class="panel-head"><h2>Recent checks</h2><button id="clearHistoryBtn" class="btn small ghost">Clear</button></header>
+          <header class="panel-head"><h2>Job log</h2><button id="clearHistoryBtn" class="btn small ghost">Clear</button></header>
           <ul id="historyList" class="list"></ul>
         </section>
       </section>
@@ -145,18 +154,14 @@
           <h1>Video text</h1>
           <p class="sub">Tool names, prompts, prices and offers shown on screen, the things a transcript misses.</p>
         </div>
-        <section class="panel">
-          <div class="slot">
-            <div class="slot-ic"><i data-icon="video" data-size="28"></i></div>
-            <p class="slot-text">A screen recording, tutorial or ad</p>
-            <div class="btn-row">
-              <label class="btn primary">
-                <i data-icon="play" data-size="18"></i> Choose a video
-                <input id="videoInput" type="file" accept="video/*" hidden />
-              </label>
-            </div>
-          </div>
-          <div class="row-setting">
+        <section class="sheet">
+          <div class="slot-title">Roll the tape</div>
+          <p class="slot-text">A screen recording, tutorial or competitor ad.</p>
+          <label class="btn primary">
+            <i data-icon="play" data-size="20"></i> Choose a video
+            <input id="videoInput" type="file" accept="video/*" hidden />
+          </label>
+          <div class="row-setting on-paper">
             <span>Read a frame every</span>
             <select id="videoInterval">
               <option value="1">1 second</option>
@@ -173,7 +178,7 @@
         <section id="videoResults" hidden>
           <div id="videoEntities"></div>
           <section class="panel" id="videoClaudeCard">
-            <header class="panel-head"><h2>Summary by Claude</h2><button id="videoClaudeBtn" class="btn small"><i data-icon="sparkle" data-size="16"></i> Summarize</button></header>
+            <header class="panel-head"><h2>Claude summary</h2><button id="videoClaudeBtn" class="btn small"><i data-icon="sparkle" data-size="16"></i> Summarize</button></header>
             <p class="meta">Optional. Sends the text below to Claude to name the tools, prompts, prices and offers. Needs your API key.</p>
             <div id="videoClaudeOut"></div>
           </section>
@@ -188,8 +193,8 @@
       <section id="page-comp" class="page" hidden>
         <div id="compHome">
           <div class="title-row">
-            <h1>Competitors</h1>
-            <p class="sub">Snap their ads, menus and signs. See when prices and offers change.</p>
+            <h1>Rivals</h1>
+            <p class="sub">Snap competitors’ ads, menus and signs. See when their prices and offers change.</p>
           </div>
           <form class="add-row" id="compForm">
             <input id="compName" type="text" placeholder="Competitor name" autocomplete="off" />
@@ -198,12 +203,12 @@
           <div id="compList"></div>
         </div>
         <section id="compDetail" hidden>
-          <button id="compBack" class="back-link"><i data-icon="back" data-size="18"></i> Competitors</button>
+          <button id="compBack" class="back-link"><i data-icon="back" data-size="18"></i> Rivals</button>
           <div class="title-row with-action">
             <h1 id="compTitle"></h1>
             <button id="compDelete" class="btn small ghost"><i data-icon="trash" data-size="16"></i> Delete</button>
           </div>
-          <div class="btn-row wide">
+          <div class="btn-row">
             <label class="btn primary">
               <i data-icon="camera" data-size="18"></i> Photo
               <input id="compCamera" type="file" accept="image/*" capture="environment" hidden />
@@ -221,7 +226,7 @@
     </main>
 
     <dialog id="settingsDialog">
-      <form method="dialog" class="sheet">
+      <form method="dialog" class="sheet-form">
         <header class="sheet-head">
           <h2>Settings</h2>
           <button value="cancel" class="icon-btn" aria-label="Close"><i data-icon="x" data-size="22"></i></button>
