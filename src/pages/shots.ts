@@ -6,6 +6,7 @@ import { isNative, NativeOcr, fileSrc } from "../native";
 import { ocrBase64 } from "../ocr";
 import * as db from "../db";
 import { $, el, prepareImage, thumbnail, fmtDate, copyText, settings } from "../util";
+import { iconEl } from "../icons";
 
 interface Shot {
   id: string;
@@ -44,10 +45,10 @@ const TRACK_URL: Record<string, (n: string) => string> = {
 
 export function initShots() {
   search.oninput = render;
-  $("shotFilters").querySelectorAll<HTMLButtonElement>(".chip").forEach((b) => {
+  $("shotFilters").querySelectorAll<HTMLButtonElement>(".tab").forEach((b) => {
     b.onclick = () => {
       filter = b.dataset.cat as Category | "all";
-      $("shotFilters").querySelectorAll(".chip").forEach((c) => c.classList.toggle("active", c === b));
+      $("shotFilters").querySelectorAll(".tab").forEach((c) => c.classList.toggle("active", c === b));
       render();
     };
   });
@@ -108,7 +109,7 @@ async function scanNow(userAsked: boolean) {
       const r = await NativeOcr.indexScreenshots({ limit: 200 });
       added += r.added;
       if (r.remaining === 0 || r.added === 0) {
-        status.textContent = `${r.total} screenshots indexed${added ? ` (${added} new)` : ""}.${settings.autoIndex ? " New ones are added automatically." : ""}`;
+        status.textContent = `${r.total} indexed${added ? `, ${added} new` : ""}${settings.autoIndex ? " · updates hourly" : ""}`;
         break;
       }
     }
@@ -141,7 +142,7 @@ async function addWebImages(files: File[]) {
     }
   }
   shots.sort((a, b) => b.taken - a.taken);
-  status.textContent = `${shots.length} screenshots indexed.`;
+  status.textContent = `${shots.length} indexed`;
   render();
 }
 
@@ -156,68 +157,66 @@ function render() {
 
   const counts: Record<string, number> = { all: shots.length, receipt: 0, tracking: 0, code: 0, other: 0 };
   shots.forEach((s) => counts[s.category]++);
-  $("shotFilters").querySelectorAll<HTMLButtonElement>(".chip").forEach((b) => {
-    const base = b.textContent!.replace(/\s\(\d+\)$/, "");
-    b.textContent = `${base} (${counts[b.dataset.cat!]})`;
+  $("shotFilters").querySelectorAll<HTMLButtonElement>(".tab").forEach((b) => {
+    b.dataset.label ??= b.textContent!.trim();
+    b.replaceChildren(b.dataset.label, el("span", { class: "n", textContent: String(counts[b.dataset.cat!]) }));
   });
 
   if (!shots.length) {
     list.replaceChildren(
-      el("div", { class: "card empty" }, isNative ? "No screenshots indexed yet. Tap “Scan new screenshots”." : "Add screenshots to make their text searchable. (In the Android app, your screenshots are indexed automatically.)"),
+      el("div", { class: "empty" }, isNative ? "No screenshots indexed yet. Tap Scan to read the ones on this phone." : "Add screenshots to make their text searchable. In the Android app this happens on its own."),
     );
     return;
   }
   if (!matches.length) {
-    list.replaceChildren(el("div", { class: "card empty" }, "No screenshots match."));
+    list.replaceChildren(el("div", { class: "empty" }, terms.length ? `Nothing matches “${search.value.trim()}”.` : "None in this group yet."));
     return;
   }
-  list.replaceChildren(...matches.slice(0, 120).map((s) => renderShot(s, terms)));
-  if (matches.length > 120) list.append(el("p", { class: "hint", textContent: `Showing 120 of ${matches.length}. Narrow your search to see more.` }));
+  const ul = el("ul", { class: "list" }, ...matches.slice(0, 120).map((s) => renderShot(s, terms)));
+  list.replaceChildren(el("section", { class: "panel flush" }, ul));
+  if (matches.length > 120) list.append(el("p", { class: "meta", textContent: `Showing 120 of ${matches.length}. Search to narrow it down.` }));
 }
 
-const ICON: Record<Category, string> = { receipt: "🧾", tracking: "📦", code: "💻", other: "🗂️" };
+const ICON: Record<Category, string> = { receipt: "receipt", tracking: "box", code: "code", other: "file" };
 
 function renderShot(s: Shot, terms: string[]): HTMLElement {
   const img = el("img", { src: s.thumb, alt: "", loading: "lazy" });
   if (s.mediaId != null) img.onclick = () => NativeOcr.openImage({ id: s.mediaId! });
 
   const actions = el("div", { class: "actions" });
-  const copyAll = el("button", { class: "btn small", textContent: "Copy text" });
-  copyAll.onclick = () => copyText(copyAll, s.text);
-  actions.append(copyAll);
-
+  const copyBtn = (label: string, text: string) => {
+    const b = el("button", { class: "btn small" }, iconEl("copy", 16), label);
+    b.onclick = () => copyText(b, text);
+    return b;
+  };
   if (s.category === "tracking") {
     for (const t of extractEntities(s.text).tracking.slice(0, 1)) {
-      const c = el("button", { class: "btn small", textContent: "Copy #" });
-      c.onclick = () => copyText(c, t.number);
-      actions.append(c);
-      if (TRACK_URL[t.carrier]) actions.append(el("a", { class: "btn small", href: TRACK_URL[t.carrier](t.number), target: "_blank", rel: "noopener", textContent: "Track" }));
+      actions.append(copyBtn("Copy number", t.number));
+      if (TRACK_URL[t.carrier]) actions.append(el("a", { class: "btn small", href: TRACK_URL[t.carrier](t.number), target: "_blank", rel: "noopener" }, iconEl("external", 16), "Track"));
     }
+  } else {
+    actions.append(copyBtn(s.category === "code" ? "Copy code" : "Copy text", s.text));
   }
-  if (s.category === "code") {
-    const c = el("button", { class: "btn small", textContent: "Copy code" });
-    c.onclick = () => copyText(c, s.text);
-    actions.replaceChildren(c);
-  }
+  const titleRow = el("div", { class: "shot-title" }, iconEl(ICON[s.category], 18), el("span", { class: "grow", textContent: s.category === "other" ? s.label || "Screenshot" : s.label }));
   if (!s.mediaId) {
-    const rm = el("button", { class: "btn small", textContent: "Remove" });
+    const rm = el("button", { class: "icon-btn small", ariaLabel: "Remove" }, iconEl("trash", 18));
     rm.onclick = async () => {
       await db.del("shots", s.id);
       shots = shots.filter((x) => x.id !== s.id);
       render();
     };
-    actions.append(rm);
+    titleRow.append(rm);
   }
 
   return el(
-    "article",
-    { class: "card shot" },
+    "li",
+    { class: `shot-row ${s.category}` },
     img,
     el(
       "div",
-      { class: "shot-body" },
-      el("div", { class: "shot-head" }, el("span", { class: `tag ${s.category}`, textContent: `${ICON[s.category]} ${s.label || s.category}` })),
-      el("div", { class: "hint", textContent: fmtDate(s.taken) }),
+      { class: "shot-main" },
+      titleRow,
+      el("div", { class: "meta", textContent: fmtDate(s.taken) }),
       snippet(s.text, terms, s.category === "code"),
       actions,
     ),
@@ -228,8 +227,9 @@ function snippet(text: string, terms: string[], mono: boolean): HTMLElement {
   const lower = text.toLowerCase();
   let start = 0;
   if (terms.length) start = Math.max(0, lower.indexOf(terms[0]) - 60);
-  const piece = (start > 0 ? "…" : "") + text.slice(start, start + 220) + (text.length > start + 220 ? "…" : "");
+  let piece = (start > 0 ? "…" : "") + text.slice(start, start + 220) + (text.length > start + 220 ? "…" : "");
   const out = el("p", { class: mono ? "snippet mono" : "snippet" });
+  if (!terms.length) piece = text.slice(0, 220);
   if (!terms.length) {
     out.textContent = piece || "(no text found)";
     return out;

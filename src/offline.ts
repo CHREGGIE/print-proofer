@@ -75,14 +75,14 @@ export async function proofreadOffline(text: string, opts: OfflineOptions): Prom
 
   const errors = issues.filter((i) => i.severity === "error").length;
   const warnings = issues.filter((i) => i.severity === "warning").length;
-  const summary =
-    !text.trim() ? "No text was found in the image. Try a sharper, closer photo."
-    : errors + warnings === 0 ? "Looks clean: no errors found by the offline checker."
-    : `${errors} error${errors === 1 ? "" : "s"} and ${warnings} thing${warnings === 1 ? "" : "s"} to double-check (offline check).`;
+  const lines = text.split("\n").filter((l) => l.trim()).length;
+  const summary = !text.trim()
+    ? "No text was found in the image. Try a sharper, closer photo."
+    : `Read ${lines} line${lines === 1 ? "" : "s"} on this phone and checked spelling, grammar, dates, phone numbers, emails and links.${opts.languageTool ? " Grammar also checked online." : ""}`;
 
   let corrected = text;
   for (const i of issues) {
-    if (i.severity === "error" && i.original && i.suggestion && !i.suggestion.includes(" or ")) {
+    if (i.severity === "error" && i.original && i.suggestion && i.suggestion !== "?" && !i.suggestion.includes(" or ")) {
       corrected = corrected.split(i.original).join(i.suggestion);
     }
   }
@@ -118,7 +118,10 @@ function checkSpelling(text: string, spell: NSpell, add: Add, lineOf: (s: string
     const lower = word.toLowerCase();
     if (spell.correct(lower)) continue;
     // ALL CAPS headline words: check the lower-case form.
-    const sugs = rankSuggestions(lower, spell.suggest(word === word.toUpperCase() ? lower : word));
+    let sugs = rankSuggestions(lower, spell.suggest(word === word.toUpperCase() ? lower : word));
+    // “pastrys” → “pastries”: a plural written with -ys
+    const ies = lower.replace(/ys$/, "ies");
+    if (ies !== lower && spell.correct(ies)) sugs = [ies, ...sugs.filter((x) => x.toLowerCase() !== ies)];
     const fix = sugs[0] ? matchCase(word, sugs[0]) : "";
     const isName = /^[A-Z][a-z]/.test(word) && m.index! > 0 && !/[.!?]\s*$/.test(clean.slice(0, m.index!).trimEnd().slice(-2));
     if (isName) {
@@ -164,6 +167,7 @@ function rankSuggestions(lower: string, sugs: string[]): string[] {
     let v = editDistance(lower, t) * 10;
     if (t.length > lower.length) v -= 3; // missing letter is likelier than a wrong one
     if (t[0] !== lower[0]) v += 5;
+    if (t.includes("'") && !lower.includes("'")) v += 8; // don't turn a plural into a possessive
     if ([...t].sort().join("") === [...lower].sort().join("")) v -= 4; // swapped letters
     return v;
   };

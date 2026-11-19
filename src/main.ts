@@ -1,4 +1,9 @@
+import "@fontsource/dm-sans/latin-400.css";
+import "@fontsource/dm-sans/latin-500.css";
+import "@fontsource/dm-sans/latin-600.css";
+import "@fontsource/dm-sans/latin-700.css";
 import "./style.css";
+import { hydrateIcons } from "./icons";
 import { $, settings } from "./util";
 import { isNative, NativeOcr } from "./native";
 import { initProof, addImages, addSharedText } from "./pages/proof";
@@ -6,18 +11,22 @@ import { initShots, showShots } from "./pages/shots";
 import { initVideo } from "./pages/video";
 import { initComp, showComp } from "./pages/comp";
 
+hydrateIcons();
+
 // ---------- tabs ----------
-const TITLES: Record<string, string> = { proof: "Print Proofer", shots: "Screenshots", video: "Video text", comp: "Competitors" };
 function showPage(page: string) {
   document.querySelectorAll<HTMLElement>(".page").forEach((p) => (p.hidden = p.id !== `page-${page}`));
   document.querySelectorAll<HTMLButtonElement>(".tabbar button").forEach((b) => b.classList.toggle("active", b.dataset.page === page));
-  $("pageTitle").textContent = TITLES[page];
   window.scrollTo({ top: 0 });
   if (page === "shots") showShots();
   if (page === "comp") showComp();
   settings.raw.set("pp.tab", page);
 }
 document.querySelectorAll<HTMLButtonElement>(".tabbar button").forEach((b) => (b.onclick = () => showPage(b.dataset.page!)));
+document.querySelector<HTMLAnchorElement>(".brand")!.onclick = (e) => {
+  e.preventDefault();
+  showPage("proof");
+};
 
 // ---------- settings ----------
 const dialog = $<HTMLDialogElement>("settingsDialog");

@@ -13,7 +13,8 @@ interface Line {
 
 const video = $<HTMLVideoElement>("videoEl");
 const progressBox = $("videoProgress");
-const bar = $<HTMLProgressElement>("videoBar");
+const bar = $("videoBar");
+const setBar = (f: number) => (bar.style.width = `${Math.round(Math.min(1, Math.max(0, f)) * 100)}%`);
 const status = $("videoStatus");
 const results = $("videoResults");
 let cancelled = false;
@@ -62,6 +63,7 @@ async function run(file: File) {
   video.src = URL.createObjectURL(file);
   show(video);
   show(progressBox);
+  setBar(0);
   $("videoCancel").hidden = false;
   status.textContent = "Opening video…";
   try {
@@ -76,7 +78,7 @@ async function run(file: File) {
       video.currentTime = Math.min(t, dur - 0.05);
       await once(video, "seeked");
       const frame = drawScaled(video, video.videoWidth, video.videoHeight, 1600);
-      bar.value = t / dur;
+      setBar(t / dur);
       const fp = fingerprint(frame);
       if (!changed(last, fp)) continue;
       last = fp;
@@ -91,7 +93,7 @@ async function run(file: File) {
         lines.push({ t, text: l });
       }
     }
-    bar.value = 1;
+    setBar(1);
     await renderResults();
     status.textContent = `${cancelled ? "Stopped" : "Done"}: read ${read} distinct frames, found ${lines.length} lines of text.`;
   } catch (e) {
@@ -121,18 +123,19 @@ async function renderResults() {
     const hit = lines.find((l) => l.text.includes(needle) || needle.includes(l.text));
     return hit ? hit.t : null;
   };
-  const group = (title: string, items: string[]) => {
+  const group = (title: string, items: string[], kind = "") => {
     if (!items.length) return null;
     return el(
-      "div",
-      { class: "card" },
-      el("h2", { textContent: title }),
+      "section",
+      { class: "panel" },
+      el("header", { class: "panel-head" }, el("h2", { textContent: title }), el("span", { class: "meta", textContent: String(Math.min(items.length, 40)) })),
       el(
         "div",
         { class: "chips" },
         ...items.slice(0, 40).map((it) => {
           const t = firstTime(it);
-          const b = el("button", { class: "chip", textContent: t == null ? it : `${it} · ${ts(t)}` });
+          const b = el("button", { class: `chip ${kind}` }, el("span", { textContent: it }));
+          if (t != null) b.append(el("span", { class: "at", textContent: ts(t) }));
           b.onclick = () => t != null && seek(t);
           return b;
         }),
@@ -140,13 +143,13 @@ async function renderResults() {
     );
   };
   const groups = [
-    group("🛠️ Possible tools & names", names),
-    group("💬 Possible prompts", prompts),
-    group("💲 Prices", e.prices),
-    group("🏷️ Offers & deals", [...e.offers, ...e.promoCodes.map((c) => `Code: ${c}`)]),
-    group("🔗 Links & handles", [...e.links, ...e.handles, ...e.emails]),
-  ].filter((g): g is HTMLDivElement => g !== null);
-  $("videoEntities").replaceChildren(...(groups.length ? groups : [el("div", { class: "card empty" }, "No prices, offers, links or names spotted. See the full text below.")]));
+    group("Tools and names", names),
+    group("Prompts", prompts),
+    group("Prices", e.prices, "price"),
+    group("Offers and codes", [...e.offers, ...e.promoCodes.map((c) => `Code ${c}`)], "offer"),
+    group("Links and handles", [...e.links, ...e.handles, ...e.emails]),
+  ].filter((g): g is HTMLElement => g !== null);
+  $("videoEntities").replaceChildren(...(groups.length ? groups : [el("div", { class: "empty spaced" }, "No prices, offers, links or names spotted. The full text is below.")]));
 
   $("videoLines").replaceChildren(
     ...lines.map((l) => {

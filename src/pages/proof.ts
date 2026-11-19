@@ -2,6 +2,7 @@ import { proofread, ProofError, type Issue, type ProofResult } from "../proof";
 import { proofreadOffline } from "../offline";
 import { ocrBase64 } from "../ocr";
 import { $, show, hide, el, settings, prepareImage, copyText, type PreparedImage } from "../util";
+import { iconEl } from "../icons";
 
 const cameraInput = $<HTMLInputElement>("cameraInput");
 const fileInput = $<HTMLInputElement>("fileInput");
@@ -96,16 +97,27 @@ export function addSharedText(t: string) {
 }
 
 function renderThumbs() {
-  thumbs.replaceChildren(
-    ...picked.map((p, i) => {
-      const rm = el("button", { class: "thumb-x", textContent: "✕", ariaLabel: `Remove page ${i + 1}` });
-      rm.onclick = () => {
-        picked.splice(i, 1);
-        renderThumbs();
-      };
-      return el("div", { class: "thumb" }, el("img", { src: p.dataUrl, alt: `Page ${i + 1}` }), rm);
-    }),
-  );
+  const has = picked.length > 0;
+  $("captureSlot").hidden = has;
+  thumbs.hidden = !has;
+  const tiles: HTMLElement[] = picked.map((p, i) => {
+    const rm = el("button", { class: "thumb-x", ariaLabel: `Remove page ${i + 1}` }, iconEl("x", 16));
+    rm.onclick = () => {
+      picked.splice(i, 1);
+      renderThumbs();
+    };
+    return el("div", { class: "thumb" }, el("img", { src: p.dataUrl, alt: `Page ${i + 1}` }), el("span", { class: "page-no", textContent: String(i + 1) }), rm);
+  });
+  if (has) {
+    const add = el("label", { class: "thumb add", ariaLabel: "Add a page" }, iconEl("plus", 22));
+    const inp = el("input", { type: "file", accept: "image/*", multiple: true, hidden: true });
+    inp.onchange = () => {
+      if (inp.files) addImages(inp.files);
+    };
+    add.append(inp);
+    tiles.push(add);
+  }
+  thumbs.replaceChildren(...tiles);
   updateCheckBtn();
 }
 
@@ -175,36 +187,42 @@ async function runCheck() {
 }
 
 const SEVERITY_ORDER = { error: 0, warning: 1, suggestion: 2 } as const;
-const SEVERITY_LABEL = { error: "Error", warning: "Check", suggestion: "Suggestion" } as const;
+const SEVERITY_LABEL = { error: "Fix", warning: "Check", suggestion: "Idea" } as const;
+const plural = (n: number, one: string, many = one + "s") => `${n} ${n === 1 ? one : many}`;
 
 function renderResult(r: ProofResult, engine?: "offline" | "claude") {
   const issues = [...r.issues].sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity]);
   const counts = { error: 0, warning: 0, suggestion: 0 };
   issues.forEach((i) => counts[i.severity]++);
   const clean = counts.error === 0 && counts.warning === 0;
+  const state = clean ? "ok" : counts.error ? "bad" : "warn";
+  const headline = clean
+    ? "Ready to print"
+    : counts.error
+      ? `Fix ${plural(counts.error, "mistake")} before printing`
+      : `Double-check ${plural(counts.warning, "thing")}`;
 
-  summaryEl.className = `card summary ${clean ? "ok" : counts.error ? "bad" : "warn"}`;
-  const counters = el("div", { class: "counters" });
-  for (const sev of ["error", "warning", "suggestion"] as const) {
-    counters.append(el("span", { class: `pill ${sev}`, textContent: `${counts[sev]} ${SEVERITY_LABEL[sev].toLowerCase()}${counts[sev] === 1 ? "" : "s"}` }));
-  }
-  summaryEl.replaceChildren(
-    el("h2", { textContent: clean ? "✅ Ready to print" : counts.error ? "❌ Fix before printing" : "⚠️ Double-check these" }),
-    counters,
-    el("p", { textContent: r.summary }),
-  );
+  summaryEl.className = `panel verdict ${state}`;
+  const text = el("div", { class: "grow" }, el("h2", { textContent: headline }), el("p", { textContent: r.summary }));
   if (engine === "offline" && settings.apiKey) {
-    const b = el("button", { class: "btn small", textContent: "Run Claude deep check too" });
+    const b = el("button", { class: "btn small", textContent: "Also run the Claude check" });
     b.onclick = () => {
       settings.engine = "claude";
       renderEngine();
       runCheck();
     };
-    summaryEl.append(b);
+    text.append(b);
   }
+  const kpi = (n: number, label: string, hot: boolean) =>
+    el("div", { class: "kpi" }, el("div", { class: `v ${n === 0 ? "zero" : hot ? "hot" : ""}`, textContent: String(n) }), el("div", { class: "l", textContent: label }));
+  summaryEl.replaceChildren(
+    el("div", { class: "verdict-top" }, el("div", { class: "verdict-mark" }, iconEl(clean ? "check" : "alert", 22)), text),
+    el("div", { class: "kpis" }, kpi(counts.error, "Mistakes", true), kpi(counts.warning, "To check", false), kpi(counts.suggestion, "Ideas", false)),
+  );
 
-  issuesEl.replaceChildren(...issues.map(renderIssue));
-  transcriptionEl.replaceChildren(highlight(r.transcription, issues));
+  $("issueCount").textContent = issues.length ? plural(issues.length, "item") : "";
+  issuesEl.replaceChildren(...(issues.length ? issues.map(renderIssue) : [el("li", { class: "empty-row", textContent: "Nothing to correct." })]));
+  transcriptionEl.replaceChildren(markUp(r.transcription, issues));
   correctedEl.textContent = r.corrected_text;
   $<HTMLButtonElement>("copyBtn").onclick = (e) => copyText(e.currentTarget as HTMLButtonElement, r.corrected_text);
 
@@ -213,26 +231,32 @@ function renderResult(r: ProofResult, engine?: "offline" | "claude") {
 }
 
 function renderIssue(i: Issue): HTMLElement {
-  const change = i.original
-    ? el("div", { class: "change" }, el("del", { textContent: i.original }), el("span", { class: "arrow", textContent: "→" }), el("ins", { textContent: i.suggestion || "—" }))
-    : el("div");
-  return el(
-    "article",
-    { class: `card issue ${i.severity}` },
-    el(
-      "div",
-      { class: "issue-head" },
-      el("span", { class: `pill ${i.severity}`, textContent: SEVERITY_LABEL[i.severity] }),
-      el("span", { class: "cat", textContent: i.category }),
-      el("span", { class: "loc", textContent: i.location }),
-    ),
-    change,
-    el("p", { class: "why", textContent: i.explanation }),
+  const top = el(
+    "div",
+    { class: "issue-top" },
+    el("span", { class: `pill ${i.severity}`, textContent: SEVERITY_LABEL[i.severity] }),
+    el("span", { class: "pill cat", textContent: i.category }),
   );
+  if (i.location) top.append(el("span", { class: "loc", textContent: i.location }));
+  const li = el("li", {}, top);
+  if (i.original) {
+    li.append(
+      el(
+        "div",
+        { class: "change" },
+        el("del", { textContent: i.original }),
+        el("span", { class: "arrow", textContent: "→" }),
+        el("ins", { textContent: i.suggestion && i.suggestion !== "?" ? i.suggestion : "check this" }),
+      ),
+    );
+  }
+  li.append(el("p", { class: "why", textContent: i.explanation }));
+  return li;
 }
 
-function highlight(text: string, issues: Issue[]): DocumentFragment {
-  type Range = { start: number; end: number; sev: Issue["severity"] };
+/** The proof with editor's marks: errors struck with the fix written in, warnings underlined. */
+function markUp(text: string, issues: Issue[]): DocumentFragment {
+  type Range = { start: number; end: number; issue: Issue };
   const ranges: Range[] = [];
   for (const i of issues) {
     const needle = i.original.trim();
@@ -240,7 +264,7 @@ function highlight(text: string, issues: Issue[]): DocumentFragment {
     let from = 0;
     let idx: number;
     while ((idx = text.indexOf(needle, from)) !== -1) {
-      const r = { start: idx, end: idx + needle.length, sev: i.severity };
+      const r = { start: idx, end: idx + needle.length, issue: i };
       if (!ranges.some((x) => r.start < x.end && x.start < r.end)) ranges.push(r);
       from = idx + needle.length;
     }
@@ -249,7 +273,14 @@ function highlight(text: string, issues: Issue[]): DocumentFragment {
   const frag = document.createDocumentFragment();
   let pos = 0;
   for (const r of ranges) {
-    frag.append(text.slice(pos, r.start), el("mark", { class: r.sev, textContent: text.slice(r.start, r.end) }));
+    frag.append(text.slice(pos, r.start));
+    const original = text.slice(r.start, r.end);
+    const fix = r.issue.suggestion;
+    if (r.issue.severity === "error" && fix && fix !== "?" && fix !== original) {
+      frag.append(el("span", { class: "mk-del", textContent: original, title: r.issue.explanation }), el("span", { class: "mk-ins", textContent: fix }));
+    } else {
+      frag.append(el("span", { class: r.issue.severity === "suggestion" ? "mk-s" : "mk-q", textContent: original, title: r.issue.explanation }));
+    }
     pos = r.end;
   }
   frag.append(text.slice(pos));
@@ -281,9 +312,15 @@ function renderHistory() {
       const first = entry.result.transcription.replace(/\[Page \d+\]\s*/g, "").trim().split("\n")[0].slice(0, 60);
       const btn = el(
         "button",
-        { class: "history-item" },
-        el("span", { textContent: first || "(no text)" }),
-        el("span", { class: "hint", textContent: `${new Date(entry.at).toLocaleString()} · ${errs} error${errs === 1 ? "" : "s"}` }),
+        { class: "row-btn" },
+        el(
+          "span",
+          { class: "grow" },
+          el("span", { class: "t", textContent: first || "(no text)" }),
+          el("span", { class: "meta", textContent: new Date(entry.at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) }),
+        ),
+        el("span", { class: `pill ${errs ? "error" : "positive"}`, textContent: errs ? plural(errs, "mistake") : "Clean" }),
+        iconEl("chevron", 18, "chev"),
       );
       btn.onclick = () => renderResult(entry.result);
       return el("li", {}, btn);
