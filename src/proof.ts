@@ -157,6 +157,62 @@ export async function proofread(opts: {
   }
 }
 
+export interface VideoInsights {
+  summary: string;
+  tools: string[];
+  prompts: string[];
+  prices: string[];
+  offers: string[];
+  links: string[];
+}
+
+const VIDEO_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["summary", "tools", "prompts", "prices", "offers", "links"],
+  properties: {
+    summary: { type: "string" },
+    tools: { type: "array", items: { type: "string" } },
+    prompts: { type: "array", items: { type: "string" } },
+    prices: { type: "array", items: { type: "string" } },
+    offers: { type: "array", items: { type: "string" } },
+    links: { type: "array", items: { type: "string" } },
+  },
+};
+
+/** Optional Claude pass over text OCR'd from video frames (timestamps included). */
+export async function summarizeVideoText(apiKey: string, timedText: string, signal?: AbortSignal): Promise<VideoInsights> {
+  const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true });
+  let message: Anthropic.Beta.BetaMessage;
+  try {
+    message = await client.beta.messages
+      .stream(
+        {
+          model: MODEL,
+          max_tokens: 16000,
+          betas: ["server-side-fallback-2026-07-01"],
+          fallbacks: "default",
+          output_config: { effort: "medium", format: { type: "json_schema", schema: VIDEO_SCHEMA } },
+          system:
+            "You receive text read by OCR from frames of a video (tutorial, ad or promo), one line per piece of on-screen text, each with its timestamp. OCR may contain small errors; fix obvious ones. Extract: tools, apps, products and brand names shown; prompts or commands typed on screen (verbatim, merged across frames); prices (with what they are for); offers, discounts, promo codes and deadlines; links and handles. Include the timestamp in parentheses after each item, e.g. \"Notion AI (0:42)\". summary: 2-3 sentences on what the video shows and its key on-screen takeaways. Use empty arrays when nothing applies.",
+          messages: [{ role: "user", content: timedText.slice(0, 150000) }],
+        },
+        { signal },
+      )
+      .finalMessage();
+  } catch (err) {
+    throw new ProofError(describeError(err));
+  }
+  if (message.stop_reason === "refusal") throw new ProofError("Claude declined to summarize this video's text.");
+  const block = message.content.find((b) => b.type === "text");
+  if (!block || block.type !== "text") throw new ProofError("No summary came back. Please try again.");
+  try {
+    return JSON.parse(block.text) as VideoInsights;
+  } catch {
+    throw new ProofError("The summary could not be read. Please try again.");
+  }
+}
+
 function describeError(err: unknown): string {
   if (err instanceof Anthropic.APIUserAbortError) return "Cancelled.";
   if (err instanceof Anthropic.AuthenticationError)

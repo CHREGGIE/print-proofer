@@ -1,5 +1,5 @@
 // Print Proofer service worker: offline app shell + Android share-sheet target.
-const SHELL = "pp-shell-v1";
+const SHELL = "pp-shell-v2";
 const SHARED = "pp-shared";
 
 self.addEventListener("install", () => self.skipWaiting());

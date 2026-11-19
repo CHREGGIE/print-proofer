@@ -1,7 +1,7 @@
 {
   "name": "Print Proofer",
   "short_name": "Proofer",
-  "description": "Snap a photo or screenshot and catch spelling, grammar and consistency mistakes before you print.",
+  "description": "Proofread print with your camera, search the text in every screenshot, pull text out of videos and track competitor prices.",
   "id": "./",
   "start_url": "./",
   "scope": "./",

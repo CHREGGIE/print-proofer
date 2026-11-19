@@ -1,0 +1,8 @@
+{
+  "appId": "com.printproofer.app",
+  "appName": "Print Proofer",
+  "webDir": "dist",
+  "android": {
+    "allowMixedContent": false
+  }
+}

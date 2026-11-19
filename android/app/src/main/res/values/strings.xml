@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Print Proofer</string>
+    <string name="title_activity_main">Print Proofer</string>
+    <string name="package_name">com.printproofer.app</string>
+    <string name="custom_url_scheme">com.printproofer.app</string>
+</resources>

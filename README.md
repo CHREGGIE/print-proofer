@@ -1,55 +1,74 @@
 # Print Proofer
 
-Snap a photo or a screenshot of anything you're about to print or post (a flyer, business card, menu, sign or ad) and get every mistake flagged before it goes out:
+An Android app (and installable web app) that reads text with your phone's camera:
 
-- **Spelling and typos**, including wrong homophones (their/there, its/it's)
-- **Grammar and punctuation**, including apostrophe misuse ("Taco's")
-- **Consistency**: the same name, price, phone number or time written two different ways
-- **Facts it can check**: a weekday that doesn't match the date, a phone number with a missing digit, a broken email or web address
-- **Layout**: text cut off or too close to the edge, uneven spacing
+| Tab | What it does |
+|---|---|
+| **✔ Proof** | Take a photo or screenshot of anything before it goes to print. It flags spelling mistakes, grammar slips, a weekday that doesn't match the date, a phone number missing a digit, broken emails or links, and the same name or number written two ways. Each problem shows as *wrong → right*. |
+| **🗂️ Screenshots** | *Screenshot memory.* Every screenshot on the phone is read and made searchable, then filed automatically as a 🧾 receipt (with its total), a 📦 tracking number (with a Track button), 💻 a code snippet, or other. New screenshots can be indexed in the background about once an hour. |
+| **🎬 Video** | Pull on-screen text out of a video (tutorials, ads, screen recordings): tool and product names, typed prompts, prices, offers, promo codes and links, each with its timestamp. These are the things transcripts miss. |
+| **📈 Competitors** | Photograph competitors' ads, flyers, menus and storefront signs over time. Prices, offers and promo codes are pulled out, and the app shows what changed since the last capture. |
 
-Each problem is shown as *wrong → right* with a one-line reason. Problems are highlighted on the text as printed, and a fully corrected version is ready to copy.
+## Works without Claude
 
-It's an installable web app (PWA) that works on Android. The proofreading is done by Claude (`claude-opus-5-5`) through the Anthropic API, using your own API key.
+Everything runs **on the phone, free, with no account**:
 
-## Put it on your Android phone
+- **Text recognition**: Google ML Kit inside the Android app (the model is bundled, so it works offline). The browser version uses Tesseract instead.
+- **Proofreading**: a Hunspell English dictionary plus built-in rules for the mistakes that matter most in print.
+- **Optional extras** (off by default):
+  - *Extra grammar check online*: LanguageTool's free public service, no account. It sends the text to languagetool.org.
+  - *Claude deep check*: the most thorough option. It also reads layout problems and context. It needs your own Anthropic API key and costs a few cents per check.
 
-1. Host it (see below) and open the link in **Chrome** on your phone.
-2. Tap **⋮ → Add to Home screen → Install**. It now opens like a normal app.
-3. Tap **⚙︎** and paste your Anthropic API key (create one at https://platform.claude.com/settings/keys).
-4. Use **Take photo** or **Upload / screenshot**. Or, from your Gallery or Photos app, tap **Share → Print Proofer** to send a screenshot straight in.
+Nothing is uploaded unless you turn on one of those two extras. Screenshot text, competitor captures and history all stay on the phone.
 
-Optional: under Settings → *Always-on notes*, list names and spellings you use often (your business name, phone number, website). The checker treats them as correct and flags anything that doesn't match.
+## Install on Android
 
-## Hosting (free, on GitHub Pages)
+**Option A: download the APK.** Every push to `main` builds the app and publishes it on this repo's **Releases → latest** page as `PrintProofer.apk`. On your phone, download it, tap it, and allow "install from this source" when Android asks.
 
-1. Merge this code into the `main` branch.
-2. In the repo on GitHub, go to **Settings → Pages → Source** and pick **GitHub Actions**.
-3. Every push to `main` deploys to `https://<your-username>.github.io/print-proofer/`.
+**Option B: build it yourself.** You need Node 22, Java 21 and the Android SDK:
 
-GitHub Pages on a **private** repo requires a paid GitHub plan. Other options are to make the repo public (your API key is never in the code; it stays on your phone) or to deploy the `dist/` folder to Netlify, Vercel or Cloudflare Pages.
+```bash
+npm install
+npm run android:apk      # → android/app/build/outputs/apk/debug/app-debug.apk
+```
 
-## Cost
+Every build is signed with the same key (`android/app/debug.keystore`), so a new APK installs over the old one and keeps your data. This key is a non-secret debug key meant for personal sideloading. Before publishing to the Play Store, switch to a private release key.
 
-Each check is one Claude API call, billed to your Anthropic account. A typical one-page flyer costs a few cents.
+### First run
 
-## Privacy
+1. **Proof**: tap *Take photo* or *Upload*, then *Check for mistakes*. Or, in your Gallery, tap **Share → Print Proofer**.
+2. **Screenshots**: tap *Scan new screenshots* and allow photo access. To keep it up to date automatically, turn on *Index new screenshots automatically* in ⚙︎ Settings.
+3. ⚙︎ **Settings → Always-on notes**: list your business name, phone and website. They are never flagged as typos, and anything that doesn't match them stands out.
 
-- Your API key is stored only in your phone's browser storage and is sent only to Anthropic.
-- Images go straight from your phone to the Anthropic API. There is no other server.
-- The 15 most recent results (text only, no images) are kept on the phone under *Recent checks*. Tap **Clear** to remove them.
+## Proofread on a computer (Python, no Claude)
+
+`tools/proofread.py` does the same proofreading on a PC or Mac. It uses Tesseract for the OCR and LanguageTool, running locally, for spelling and grammar:
+
+```bash
+pip install pytesseract pillow language-tool-python
+python tools/proofread.py flyer.jpg --notes "Bella's Bakery"
+```
+
+You also need Tesseract and Java; the setup notes are at the top of the script.
+
+## Web version
+
+The same app runs in a browser and can be installed from Chrome (**⋮ → Add to Home screen**). The `deploy.yml` workflow publishes it to GitHub Pages. Background screenshot indexing only works in the Android app; in the browser you add screenshots by hand.
 
 ## Development
 
 ```bash
-npm install
-npm run dev      # local dev server (use --host to open it from your phone on the same Wi-Fi)
-npm run build    # type-check and build to dist/
+npm run dev            # web app at http://localhost:5173 (also on your Wi-Fi)
+npm run build          # type-check + build to dist/
+npm run android:sync   # build + copy into the Android project
 ```
 
-| File | What it does |
+| Path | What it is |
 |---|---|
-| `src/proof.ts` | The Claude API call, the proofreading prompt and the result schema |
-| `src/main.ts` | UI: image capture and resize, results, history, settings |
-| `public/sw.js` | Service worker: offline shell and the Android share-sheet target |
-| `public/manifest.webmanifest` | App name, icons, install and share settings |
+| `src/offline.ts` | Offline proofreader: dictionary + rules (dates, phones, emails, a/an, doubled words, …) |
+| `src/extract.ts` | Prices, offers, promo codes, links, tracking numbers; screenshot auto-filing; competitor diffs |
+| `src/ocr.ts` | OCR: ML Kit on Android, Tesseract in the browser |
+| `src/proof.ts` | Optional Claude deep check and video summary |
+| `src/pages/*` | The four tabs |
+| `android/app/src/main/java/com/printproofer/app/` | Native code: ML Kit OCR, screenshot indexer (SQLite), hourly background worker, share-sheet handling |
+| `tools/proofread.py` | Desktop proofreader in Python |
