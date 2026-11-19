@@ -1,0 +1,27 @@
+{
+  "name": "print-proofer",
+  "version": "1.0.0",
+  "description": "Snap a photo or screenshot of a print proof and get spelling, grammar and consistency checks.",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "tsc && vite build",
+    "preview": "vite preview --host"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CHREGGIE/print-proofer.git"
+  },
+  "bugs": {
+    "url": "https://github.com/CHREGGIE/print-proofer/issues"
+  },
+  "homepage": "https://github.com/CHREGGIE/print-proofer#readme",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.4.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3",
+    "vite": "^6.4.5"
+  },
+  "private": true,
+  "type": "module"
+}

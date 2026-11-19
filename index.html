@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#1f4e79" />
+    <meta name="description" content="Snap a photo or screenshot of a print proof and catch spelling, grammar and consistency mistakes before it goes to print." />
+    <title>Print Proofer</title>
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="./icon-192.png" />
+  </head>
+  <body>
+    <header class="topbar">
+      <h1><img src="./icon.svg" alt="" width="28" height="28" /> Print Proofer</h1>
+      <button id="settingsBtn" class="icon-btn" aria-label="Settings">⚙︎</button>
+    </header>
+
+    <main>
+      <section id="setupCard" class="card notice" hidden>
+        <strong>One-time setup:</strong> add your Anthropic API key so the app can check your proofs.
+        <button id="setupBtn" class="btn primary small">Add key</button>
+      </section>
+
+      <section class="card">
+        <div class="pick-row">
+          <label class="btn primary big">
+            📷 Take photo
+            <input id="cameraInput" type="file" accept="image/*" capture="environment" hidden />
+          </label>
+          <label class="btn big">
+            🖼️ Upload / screenshot
+            <input id="fileInput" type="file" accept="image/*" multiple hidden />
+          </label>
+        </div>
+        <p class="hint">Tip: you can also <em>Share</em> a screenshot straight to Print Proofer from your gallery once it's installed.</p>
+
+        <div id="thumbs" class="thumbs"></div>
+
+        <details id="textDetails">
+          <summary>…or paste text instead</summary>
+          <textarea id="textInput" rows="5" placeholder="Paste the text you want checked"></textarea>
+        </details>
+
+        <details>
+          <summary>Notes for the checker (optional)</summary>
+          <textarea id="notesInput" rows="3" placeholder="e.g. Business name is spelled &quot;Bella's Bakery&quot;. Event is Saturday Dec 6, 2026. Use 12-hour times."></textarea>
+        </details>
+
+        <button id="checkBtn" class="btn primary big full" disabled>✔ Check for mistakes</button>
+      </section>
+
+      <section id="statusCard" class="card status" hidden>
+        <div class="spinner" aria-hidden="true"></div>
+        <div>
+          <div id="statusText">Reading your proof…</div>
+          <div class="hint" id="elapsed"></div>
+        </div>
+        <button id="cancelBtn" class="btn small">Cancel</button>
+      </section>
+
+      <section id="errorCard" class="card error" hidden></section>
+
+      <section id="results" hidden>
+        <div id="summary" class="card summary"></div>
+        <div id="issues"></div>
+
+        <div class="card">
+          <div class="row-between">
+            <h2>Text as printed</h2>
+          </div>
+          <p class="hint">Problems are highlighted.</p>
+          <div id="transcription" class="textblock"></div>
+        </div>
+
+        <div class="card">
+          <div class="row-between">
+            <h2>Corrected text</h2>
+            <button id="copyBtn" class="btn small">Copy</button>
+          </div>
+          <div id="corrected" class="textblock"></div>
+        </div>
+
+        <button id="newBtn" class="btn big full">Check another</button>
+      </section>
+
+      <section id="historySection" class="card" hidden>
+        <div class="row-between">
+          <h2>Recent checks</h2>
+          <button id="clearHistoryBtn" class="btn small">Clear</button>
+        </div>
+        <ul id="historyList" class="history"></ul>
+      </section>
+    </main>
+
+    <dialog id="settingsDialog">
+      <form method="dialog" class="dialog-body">
+        <h2>Settings</h2>
+        <label for="keyInput">Anthropic API key</label>
+        <input id="keyInput" type="password" autocomplete="off" spellcheck="false" placeholder="sk-ant-..." />
+        <p class="hint">
+          Get one at <a href="https://platform.claude.com/settings/keys" target="_blank" rel="noopener">platform.claude.com</a>.
+          It's stored only on this phone and sent only to Anthropic.
+        </p>
+        <label for="defaultNotesInput">Always-on notes</label>
+        <textarea id="defaultNotesInput" rows="3" placeholder="e.g. My business is Bella's Bakery. Phone (555) 123-4567. Website bellasbakery.com"></textarea>
+        <p class="hint">Sent with every check, so names you use a lot are never flagged as typos.</p>
+        <div class="dialog-actions">
+          <button value="cancel" class="btn">Cancel</button>
+          <button id="saveSettingsBtn" value="save" class="btn primary">Save</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>
