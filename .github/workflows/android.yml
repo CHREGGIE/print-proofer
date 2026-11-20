@@ -27,7 +27,7 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
-      - uses: android-actions/setup-android@v3
+      # GitHub's Ubuntu runners already include the Android SDK (ANDROID_HOME is set).
       - run: npm ci
       - run: npm run android:sync
       - run: ./gradlew assembleDebug --no-daemon
