@@ -54,6 +54,18 @@ public class ScreenshotIndex extends SQLiteOpenHelper {
         public int added;
         public int total;
         public int remaining;
+        /** New, recent screenshots where the quick check found possible mistakes. */
+        public final List<Flagged> flagged = new ArrayList<>();
+    }
+
+    public static class Flagged {
+        public final long id;
+        public final List<String> problems;
+
+        Flagged(long id, List<String> problems) {
+            this.id = id;
+            this.problems = problems;
+        }
     }
 
     private static ScreenshotIndex instance;
@@ -168,6 +180,11 @@ public class ScreenshotIndex extends SQLiteOpenHelper {
                 v.put("name", m.name);
                 v.put("taken", m.taken);
                 v.put("text", text);
+                // Only fresh screenshots (last 2 hours) are worth a notification.
+                if (System.currentTimeMillis() - m.taken < 2 * 3600_000L) {
+                    List<String> problems = QuickCheck.check(text);
+                    if (!problems.isEmpty()) r.flagged.add(new Flagged(m.id, problems));
+                }
                 v.put("thumb", thumbPath);
                 getWritableDatabase().insertWithOnConflict("shots", null, v, SQLiteDatabase.CONFLICT_REPLACE);
                 r.added++;
@@ -181,6 +198,17 @@ public class ScreenshotIndex extends SQLiteOpenHelper {
 
     public Cursor rows() {
         return getReadableDatabase().rawQuery("SELECT media_id, name, taken, text, thumb FROM shots ORDER BY taken DESC", null);
+    }
+
+    /** A screenshot as base64 JPEG (for opening it in the Proof tab). */
+    public String imageBase64(long id) throws Exception {
+        Uri item = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id);
+        Bitmap bmp = decode(context.getContentResolver(), item, 2400);
+        if (bmp == null) throw new Exception("Image not found");
+        java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+        bmp.compress(Bitmap.CompressFormat.JPEG, 90, out);
+        bmp.recycle();
+        return android.util.Base64.encodeToString(out.toByteArray(), android.util.Base64.NO_WRAP);
     }
 
     /** Decode an image downsampled so its longest side is about maxEdge pixels. */

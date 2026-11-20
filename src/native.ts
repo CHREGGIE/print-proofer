@@ -13,6 +13,15 @@ export interface NativeOcrPlugin {
   /** On-device text recognition (Google ML Kit). */
   recognize(opts: { base64: string }): Promise<{ text: string }>;
 
+  /** QR codes and barcodes (Google ML Kit). */
+  scanCodes(opts: { base64: string }): Promise<{ codes: { format: string; raw: string; box?: { x: number; y: number; w: number; h: number } }[] }>;
+
+  /** Read aloud with Android text-to-speech. Events report the word being spoken. */
+  speak(opts: { text: string; id: string; rate: number }): Promise<void>;
+  stopSpeaking(): Promise<void>;
+  addListener(event: "speechRange", fn: (e: { id: string; start: number; end: number }) => void): Promise<PluginListenerHandle>;
+  addListener(event: "speechDone", fn: (e: { id: string }) => void): Promise<PluginListenerHandle>;
+
   /** Screenshot memory */
   checkPhotoAccess(): Promise<{ granted: boolean }>;
   requestPhotoAccess(): Promise<{ granted: boolean }>;
@@ -20,6 +29,12 @@ export interface NativeOcrPlugin {
   getIndexed(opts: { sinceTaken?: number }): Promise<{ shots: IndexedShot[] }>;
   openImage(opts: { id: number }): Promise<void>;
   setAutoIndex(opts: { enabled: boolean }): Promise<void>;
+  /** Notify about possible mistakes in new screenshots, seconds after each one is taken. */
+  setAutoProof(opts: { enabled: boolean }): Promise<void>;
+  requestNotifications(): Promise<{ granted: boolean }>;
+  getImage(opts: { id: number }): Promise<{ base64: string }>;
+  getPendingProof(): Promise<{ id: number }>;
+  addListener(event: "proofRequest", fn: (e: { id: number }) => void): Promise<PluginListenerHandle>;
   addListener(event: "indexProgress", fn: (e: { done: number; total: number }) => void): Promise<PluginListenerHandle>;
 
   /** Images shared to the app from other apps (Android share sheet). */

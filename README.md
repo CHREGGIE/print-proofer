@@ -4,8 +4,8 @@ An Android app (and installable web app) that reads text with your phone's camer
 
 | Tab | What it does |
 |---|---|
-| **✔ Proof** | Take a photo or screenshot of anything before it goes to print. It flags spelling mistakes, grammar slips, a weekday that doesn't match the date, a phone number missing a digit, broken emails or links, and the same name or number written two ways. Each problem shows as *wrong → right*. |
-| **🗂️ Screenshots** | *Screenshot memory.* Every screenshot on the phone is read and made searchable, then filed automatically as a 🧾 receipt (with its total), a 📦 tracking number (with a Track button), 💻 a code snippet, or other. New screenshots can be indexed in the background about once an hour. |
+| **✔ Proof** | Take a photo or screenshot of anything before it goes to print. It flags spelling mistakes, grammar slips, a weekday that doesn't match the date, a phone number missing a digit, broken emails or links, bad UPC/EAN check digits, and the same name or number written two ways. Each problem shows as *wrong → right*. **QR codes and barcodes** on the proof are scanned and tested: does the link load, does it match the address printed beside it, does the phone in the code match the printed one, does the number under a barcode match the bars. **Read aloud** speaks the proof with the current word highlighted (the old proofreader's trick for missing and doubled words). |
+| **🗂️ Screenshots** | *Screenshot memory.* Every screenshot on the phone is read and made searchable, then filed automatically as a 🧾 receipt (with its total), a 📦 tracking number (with a Track button), 💻 a code snippet, or other. New screenshots can be indexed in the background about once an hour. With **Warn me about mistakes in new screenshots** on, each new screenshot is checked seconds after it's taken and a notification lists any likely mistakes; tap it to open the full check. **Proof it** on any screenshot does the same by hand. |
 | **🎬 Video** | Pull on-screen text out of a video (tutorials, ads, screen recordings): tool and product names, typed prompts, prices, offers, promo codes and links, each with its timestamp. These are the things transcripts miss. |
 | **🎨 Colors** | Pull the palette out of a logo, flyer or photo: each colour with HEX, RGB and CMYK, how much of the image it covers, a plain name, and print notes (bright screen colours that will print duller, near-blacks that need a rich black). Tap the picture to sample any spot. |
 | **📈 Competitors** | Photograph competitors' ads, flyers, menus and storefront signs over time. Prices, offers and promo codes are pulled out, and the app shows what changed since the last capture. |
@@ -63,6 +63,18 @@ python tools/palette.py flyer.jpg -n 8 --no-background --html palette.html   # p
 python tools/palette.py logo.png --json            # for other tools
 ```
 
+## Hotfolder: proof every file dropped in a folder (Python)
+
+`tools/hotfolder.py` watches a folder. Every PDF or image dropped into it is proofread, its QR codes and
+barcodes checked, and (for PDFs) preflighted: images under 300 dpi, missing bleed, page size. A report is
+written to `checked/<file>.report.html` (plus `.json`), and the original moves to `done/`.
+
+```bash
+pip install pillow pypdfium2 zxing-cpp pytesseract language-tool-python
+python tools/hotfolder.py ~/Proofs                       # keep watching (Ctrl+C to stop)
+python tools/hotfolder.py ~/Proofs --once --keep         # check what's there now, leave files in place
+```
+
 ## Web version
 
 The same app runs in a browser and can be installed from Chrome (**⋮ → Add to Home screen**). The `deploy.yml` workflow publishes it to GitHub Pages. Background screenshot indexing only works in the Android app; in the browser you add screenshots by hand.
@@ -86,3 +98,7 @@ npm run android:sync   # build + copy into the Android project
 | `src/palette.ts` | Colour palette extraction (k-means in Lab, blend filtering, CMYK, print notes) |
 | `tools/proofread.py` | Desktop proofreader in Python |
 | `tools/palette.py` | Desktop colour palette extractor in Python |
+| `tools/hotfolder.py` | Folder watcher: proofreads, checks codes and preflights every file dropped in |
+| `src/codes.ts` | QR / barcode reading (ML Kit on Android, ZXing in the browser) and checks |
+| `src/speech.ts` | Read aloud (Android text-to-speech, Web Speech in the browser) |
+| `android/.../QuickCheck.java` | The fast checks run on new screenshots in the background |

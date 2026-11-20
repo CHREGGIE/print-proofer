@@ -2,6 +2,7 @@
 // mistakes that matter most on printed material. No network, no account.
 import nspell from "nspell";
 import type { Issue, ProofResult, Severity } from "./proof";
+import { gs1Valid } from "./codes";
 
 type NSpell = ReturnType<typeof nspell>;
 let spellPromise: Promise<NSpell> | null = null;
@@ -277,6 +278,13 @@ function checkContacts(text: string, add: Add, lineOf: (s: string) => string) {
     const digits = m[0].replace(/\D/g, "");
     const n = digits.startsWith("1") && digits.length === 11 ? 10 : digits.length;
     if (n !== 10) add("error", "facts", m[0].trim(), "?", `This phone number has ${n} digits; US numbers have 10.`, lineOf(m[0]));
+  }
+  // UPC / EAN product numbers printed as digits (e.g. under a barcode): verify the check digit.
+  for (const m of text.matchAll(/(?<![\d-])\d(?:[ ]?\d){11,12}(?![\d-])/g)) {
+    const d = m[0].replace(/\D/g, "");
+    if ((d.length === 12 || d.length === 13) && !gs1Valid(d)) {
+      add("warning", "facts", m[0], "?", `This looks like ${d.length === 12 ? "a UPC" : "an EAN"} product number, but its check digit is wrong. Shop scanners will reject it.`, lineOf(m[0]));
+    }
   }
   // Emails
   for (const m of text.matchAll(/[\w.+-]+@[\w.-]*/g)) {

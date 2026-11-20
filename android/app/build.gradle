@@ -50,6 +50,8 @@ dependencies {
     implementation project(':capacitor-android')
     // On-device text recognition; the model ships inside the APK, so it works offline.
     implementation "com.google.mlkit:text-recognition:16.0.1"
+    // On-device QR / barcode scanning (model bundled, works offline).
+    implementation "com.google.mlkit:barcode-scanning:17.3.0"
     // Hourly background indexing of new screenshots.
     implementation "androidx.work:work-runtime:2.10.1"
     testImplementation "junit:junit:$junitVersion"

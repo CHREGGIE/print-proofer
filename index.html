@@ -94,13 +94,28 @@
         <section id="results" hidden>
           <section class="sheet verdict" id="summary"></section>
 
+          <section class="panel flush" id="codesPanel" hidden>
+            <header class="panel-head"><h2>QR &amp; barcodes</h2><span class="mono meta" id="codesCount"></span></header>
+            <ul id="codesList" class="list"></ul>
+          </section>
+
           <section class="panel flush">
             <header class="panel-head"><h2>Corrections</h2><span class="mono meta" id="issueCount"></span></header>
             <ul id="issues" class="list issues"></ul>
           </section>
 
           <section class="sheet">
-            <header class="panel-head"><h2>Marked-up proof</h2></header>
+            <header class="panel-head">
+              <h2>Marked-up proof</h2>
+              <button id="readBtn" class="btn small primary"><i data-icon="play" data-size="16"></i> <span>Read aloud</span></button>
+            </header>
+            <div class="read-bar" id="readBar" hidden>
+              <span class="meta">Listen for missing or doubled words. Tap any word to start there.</span>
+              <div class="seg" id="readRate" role="radiogroup" aria-label="Reading speed">
+                <button data-rate="0.75" role="radio">Slow</button>
+                <button data-rate="1" role="radio" class="active">Normal</button>
+              </div>
+            </div>
             <p class="key"><span><span class="mk-del">struck</span> remove</span><span><span class="mk-ins" style="margin:0">red</span> write in</span><span><span class="mk-q">yellow</span> check</span><span><span class="mk-s">blue</span> idea</span></p>
             <div id="transcription" class="proofsheet"></div>
           </section>
@@ -288,6 +303,10 @@
           <label class="switch-row native-only">
             <span><strong>Index screenshots in the background</strong><small>About once an hour. Everything stays on this phone.</small></span>
             <input id="autoIndexToggle" type="checkbox" role="switch" />
+          </label>
+          <label class="switch-row native-only">
+            <span><strong>Warn me about mistakes in new screenshots</strong><small>Seconds after you take a screenshot, it's checked on this phone. A notification shows anything it spots; tap it to proof.</small></span>
+            <input id="autoProofToggle" type="checkbox" role="switch" />
           </label>
         </div>
 

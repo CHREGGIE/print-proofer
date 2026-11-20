@@ -7,7 +7,7 @@ import "./style.css";
 import { hydrateIcons } from "./icons";
 import { $, settings } from "./util";
 import { isNative, NativeOcr } from "./native";
-import { initProof, addImages, addSharedText } from "./pages/proof";
+import { initProof, addImages, addSharedText, proofImages, proofText } from "./pages/proof";
 import { initShots, showShots } from "./pages/shots";
 import { initVideo } from "./pages/video";
 import { initComp, showComp } from "./pages/comp";
@@ -37,6 +37,7 @@ function openSettings() {
   $<HTMLTextAreaElement>("defaultNotesInput").value = settings.notes;
   $<HTMLInputElement>("ltToggle").checked = settings.languageTool;
   $<HTMLInputElement>("autoIndexToggle").checked = settings.autoIndex;
+  $<HTMLInputElement>("autoProofToggle").checked = settings.autoProof;
   dialog.showModal();
 }
 $("settingsBtn").onclick = openSettings;
@@ -54,12 +55,22 @@ dialog.addEventListener("close", async () => {
     await NativeOcr.setAutoIndex({ enabled: auto }).catch(() => {});
   }
   settings.autoIndex = auto;
+
+  const proofNew = $<HTMLInputElement>("autoProofToggle").checked;
+  if (isNative && proofNew !== settings.autoProof) {
+    if (proofNew) {
+      if (!(await NativeOcr.requestPhotoAccess()).granted) return alert("Photo access is needed to read new screenshots.");
+      if (!(await NativeOcr.requestNotifications()).granted) return alert("Allow notifications so the app can tell you when it spots a mistake.");
+    }
+    await NativeOcr.setAutoProof({ enabled: proofNew }).catch(() => {});
+  }
+  settings.autoProof = proofNew;
 });
 document.querySelectorAll<HTMLElement>(".native-only").forEach((e) => (e.hidden = !isNative));
 
 // ---------- pages ----------
 initProof({ openSettings });
-initShots();
+initShots({ proofImage: async (blob) => (showPage("proof"), proofImages([blob])), proofText: (t) => (showPage("proof"), proofText(t)) });
 initVideo();
 initComp();
 initColors();
@@ -78,7 +89,21 @@ async function receiveShared(images: string[]) {
   await addImages(images.map(b64ToBlob));
 }
 
+// A tapped "possible mistakes" notification: open that screenshot in Proof and check it.
+async function proofScreenshot(id: number) {
+  if (id < 0) return;
+  try {
+    const { base64 } = await NativeOcr.getImage({ id });
+    showPage("proof");
+    await proofImages([b64ToBlob(base64)]);
+  } catch {
+    /* screenshot deleted meanwhile */
+  }
+}
+
 if (isNative) {
+  NativeOcr.getPendingProof().then((r) => proofScreenshot(r.id)).catch(() => {});
+  NativeOcr.addListener("proofRequest", (r) => proofScreenshot(r.id));
   NativeOcr.getSharedImages().then((r) => receiveShared(r.images)).catch(() => {});
   NativeOcr.addListener("sharedImages", (r) => receiveShared(r.images));
 } else {

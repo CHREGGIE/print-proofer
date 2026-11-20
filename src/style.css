@@ -424,6 +424,28 @@ select { width: auto; padding-right: 30px; }
 .tag.k { background: #fff; color: #111; }
 .tag.g { background: var(--raised); color: var(--muted); }
 
+/* ---------------- QR & barcodes ---------------- */
+.code-row { padding: 16px 18px; }
+.code-head { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.code-raw { font-family: var(--mono); font-size: 13px; color: #fff; overflow-wrap: anywhere; min-width: 0; }
+.checks { list-style: none; margin: 10px 0 0; padding: 0; }
+.checks li { display: grid; grid-template-columns: 22px 1fr; gap: 8px; padding: 3px 0; font-size: 14px; color: var(--muted); }
+.checks b { font-family: var(--mono); font-weight: 600; text-align: center; }
+.checks .ok b { color: var(--c); }
+.checks .warn b { color: var(--y); }
+.checks .warn { color: #e8e8e8; }
+.checks .bad b { color: #ff5cb8; }
+.checks .bad { color: #fff; font-weight: 600; }
+.checks .info b { color: var(--faint); }
+
+/* ---------------- read aloud ---------------- */
+.read-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.read-bar .seg { border-color: var(--paper-ink); }
+.read-bar .seg button { color: var(--paper-muted); }
+.read-bar .seg button.active { background: var(--paper-ink); color: var(--paper); }
+.rw { cursor: pointer; border-radius: 2px; transition: background-color 0.12s ease; }
+.rw.now { background: var(--y); box-shadow: 0 0 0 3px var(--y); }
+
 /* ---------------- screenshots ---------------- */
 .search { position: relative; display: block; margin-bottom: 4px; }
 .search .ic { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--faint); }

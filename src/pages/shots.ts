@@ -43,7 +43,10 @@ const TRACK_URL: Record<string, (n: string) => string> = {
   DHL: (n) => `https://www.dhl.com/us-en/home/tracking.html?tracking-id=${n}`,
 };
 
-export function initShots() {
+let proofHooks: { proofImage: (b: Blob) => unknown; proofText: (t: string) => unknown } | null = null;
+
+export function initShots(hooks: { proofImage: (b: Blob) => unknown; proofText: (t: string) => unknown }) {
+  proofHooks = hooks;
   search.oninput = render;
   $("shotFilters").querySelectorAll<HTMLButtonElement>(".tab").forEach((b) => {
     b.onclick = () => {
@@ -198,6 +201,21 @@ function renderShot(s: Shot, terms: string[]): HTMLElement {
   } else {
     actions.append(copyBtn(s.category === "code" ? "Copy code" : "Copy text", s.text));
   }
+  // Proof this screenshot: the full image on the phone (codes included), the text in a browser.
+  const proof = el("button", { class: "btn small primary" }, iconEl("proof", 16), "Proof it");
+  proof.onclick = async () => {
+    if (s.mediaId != null) {
+      try {
+        const { base64 } = await NativeOcr.getImage({ id: s.mediaId });
+        proofHooks?.proofImage(new Blob([Uint8Array.from(atob(base64), (c) => c.charCodeAt(0))], { type: "image/jpeg" }));
+        return;
+      } catch {
+        /* fall back to the text we already have */
+      }
+    }
+    proofHooks?.proofText(s.text);
+  };
+  if (s.category !== "receipt" && s.category !== "tracking" && s.category !== "code") actions.prepend(proof);
   const titleRow = el("div", { class: "shot-title" }, el("span", { class: "label", textContent: s.category === "other" ? s.label || "Screenshot" : s.label }));
   if (!s.mediaId) {
     const rm = el("button", { class: "icon-btn small", ariaLabel: "Remove" }, iconEl("trash", 18));

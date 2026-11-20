@@ -16,6 +16,8 @@ export interface ProofResult {
   summary: string;
   issues: Issue[];
   corrected_text: string;
+  /** QR codes and barcodes found on the proof, with their checks (added by the app, not by Claude). */
+  codes?: import("./codes").CodeReport[];
 }
 
 export interface ProofImage {

@@ -44,6 +44,8 @@ export const settings = {
   set languageTool(v: boolean) { set("pp.languageTool", v ? "1" : ""); },
   get autoIndex() { return get("pp.autoIndex") === "1"; },
   set autoIndex(v: boolean) { set("pp.autoIndex", v ? "1" : ""); },
+  get autoProof() { return get("pp.autoProof") === "1"; },
+  set autoProof(v: boolean) { set("pp.autoProof", v ? "1" : ""); },
   raw: { get, set },
 };
 

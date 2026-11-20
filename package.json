@@ -28,7 +28,8 @@
     "@tesseract.js-data/eng": "^1.0.0",
     "dictionary-en": "^4.0.0",
     "nspell": "^2.1.5",
-    "tesseract.js": "^7.0.0"
+    "tesseract.js": "^7.0.0",
+    "zxing-wasm": "^3.1.6"
   },
   "devDependencies": {
     "@capacitor/cli": "^7.6.10",

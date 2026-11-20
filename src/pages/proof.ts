@@ -3,6 +3,8 @@ import { proofreadOffline } from "../offline";
 import { ocrBase64 } from "../ocr";
 import { $, show, hide, el, settings, prepareImage, copyText, type PreparedImage } from "../util";
 import { iconEl } from "../icons";
+import { canSpeak, readAloud, stopReading } from "../speech";
+import { scanCodes, maskCodes, checkCodes, codeIssues, type CodeReport, type FoundCode } from "../codes";
 
 const cameraInput = $<HTMLInputElement>("cameraInput");
 const fileInput = $<HTMLInputElement>("fileInput");
@@ -54,7 +56,9 @@ export function initProof(opts: { openSettings: () => void }) {
 
   checkBtn.onclick = runCheck;
   $("cancelBtn").onclick = () => controller?.abort();
+  initReadAloud();
   $("newBtn").onclick = () => {
+    stopReadingUi();
     picked = [];
     textInput.value = "";
     notesInput.value = "";
@@ -77,6 +81,25 @@ function renderEngine() {
     b.classList.toggle("active", on);
     b.setAttribute("aria-checked", String(on));
   });
+}
+
+/** Start a fresh check of these pictures (from a notification or the Screenshots tab). */
+export async function proofImages(files: Blob[]) {
+  picked = [];
+  textInput.value = "";
+  hide(results);
+  await addImages(files);
+  window.scrollTo({ top: 0 });
+  if (picked.length) await runCheck();
+}
+
+/** Start a fresh check of text already read from a picture. */
+export async function proofText(text: string) {
+  picked = [];
+  renderThumbs();
+  hide(results);
+  addSharedText(text);
+  await runCheck();
 }
 
 export async function addImages(files: Iterable<Blob>) {
@@ -156,6 +179,9 @@ async function runCheck() {
   }, 1000);
 
   const notes = [settings.notes, notesInput.value].filter((n) => n.trim()).join("\n");
+  // QR codes and barcodes are read from each picture first (fast); the offline reader then
+  // reads the text with the codes painted out.
+  const codesPerPage: FoundCode[][] = await Promise.all(picked.map((p) => scanCodes(p.base64).catch(() => [] as FoundCode[])));
   try {
     let result: ProofResult;
     if (useClaude) {
@@ -171,13 +197,20 @@ async function runCheck() {
       for (let i = 0; i < picked.length; i++) {
         if (controller.signal.aborted) throw new ProofError("Cancelled.");
         statusText.textContent = picked.length > 1 ? `Reading page ${i + 1} of ${picked.length}…` : steps[0];
-        const t = await ocrBase64(picked[i].base64);
+        const t = await ocrBase64(await maskCodes(picked[i].base64, codesPerPage[i]).catch(() => picked[i].base64));
         parts.push(picked.length > 1 ? `[Page ${i + 1}]\n${t}` : t);
       }
       if (textInput.value.trim()) parts.push(textInput.value.trim());
       statusText.textContent = steps[1];
       result = await proofreadOffline(parts.join("\n\n"), { notes, languageTool: settings.languageTool });
       if (controller.signal.aborted) throw new ProofError("Cancelled.");
+    }
+    const found = codesPerPage.flat().filter((c, i, all) => all.findIndex((d) => d.raw === c.raw) === i);
+    if (found.length) {
+      statusText.textContent = `Testing ${found.length === 1 ? "the code" : `${found.length} codes`}…`;
+      const reports = await checkCodes(found, `${result.transcription}\n${textInput.value}`);
+      result.codes = reports;
+      result.issues.push(...codeIssues(reports));
     }
     renderResult(result, useClaude ? "claude" : "offline");
     settings.raw.set("pp.jobs", String(Number(settings.raw.get("pp.jobs") || "0") + 1));
@@ -239,6 +272,9 @@ function renderResult(r: ProofResult, engine?: "offline" | "claude") {
 
   $("issueCount").textContent = issues.length ? `${issues.length} ITEM${issues.length === 1 ? "" : "S"}` : "";
   issuesEl.replaceChildren(...(issues.length ? issues.map(renderIssue) : [el("li", {}, el("span", { class: "empty-row", textContent: "Nothing to correct. Clean proof." }))]));
+  renderCodes(r.codes ?? []);
+  stopReadingUi();
+  shown = { text: r.transcription, issues };
   transcriptionEl.replaceChildren(markUp(r.transcription, issues));
   correctedEl.textContent = r.corrected_text;
   $<HTMLButtonElement>("copyBtn").onclick = (e) => copyText(e.currentTarget as HTMLButtonElement, r.corrected_text);
@@ -264,6 +300,98 @@ function renderIssue(i: Issue): HTMLElement {
   );
   li.append(el("p", { class: "why", textContent: i.explanation }));
   return li;
+}
+
+// ---------------- read aloud ----------------
+let shown: { text: string; issues: Issue[] } = { text: "", issues: [] };
+let reading = false;
+let rate = 1;
+
+export function initReadAloud() {
+  const btn = $<HTMLButtonElement>("readBtn");
+  btn.hidden = !canSpeak();
+  btn.onclick = () => (reading ? stopReadingUi() : startReading(0));
+  document.querySelectorAll<HTMLButtonElement>("#readRate button").forEach((b) => {
+    b.onclick = () => {
+      rate = Number(b.dataset.rate);
+      document.querySelectorAll("#readRate button").forEach((x) => x.classList.toggle("active", x === b));
+    };
+  });
+}
+
+/** Swap the marked-up proof for the plain text as words, so the spoken word can light up. */
+function startReading(from: number) {
+  reading = true;
+  $("readBar").hidden = false;
+  document.querySelector<HTMLElement>("#results .key")!.hidden = true;
+  const btn = $<HTMLButtonElement>("readBtn");
+  btn.replaceChildren(iconEl("x", 16), " ", el("span", { textContent: "Stop" }));
+  const frag = document.createDocumentFragment();
+  const words: HTMLElement[] = [];
+  let pos = 0;
+  for (const m of shown.text.matchAll(/\S+/g)) {
+    frag.append(shown.text.slice(pos, m.index));
+    const w = el("span", { className: "rw", textContent: m[0] });
+    w.dataset.start = String(m.index);
+    w.onclick = () => startReading(m.index!);
+    words.push(w);
+    frag.append(w);
+    pos = m.index! + m[0].length;
+  }
+  frag.append(shown.text.slice(pos));
+  transcriptionEl.replaceChildren(frag);
+  let last: HTMLElement | null = null;
+  readAloud({
+    text: shown.text,
+    from,
+    rate,
+    onWord: (start) => {
+      const w = words.find((x) => Number(x.dataset.start) <= start && start < Number(x.dataset.start) + x.textContent!.length) ?? words.find((x) => Number(x.dataset.start) >= start);
+      if (!w || w === last) return;
+      last?.classList.remove("now");
+      w.classList.add("now");
+      last = w;
+      const r = w.getBoundingClientRect();
+      if (r.top < 90 || r.bottom > innerHeight - 90) w.scrollIntoView({ block: "center", behavior: "smooth" });
+    },
+    onEnd: stopReadingUi,
+  });
+}
+
+function stopReadingUi() {
+  if (!reading) return;
+  reading = false;
+  stopReading();
+  $("readBar").hidden = true;
+  document.querySelector<HTMLElement>("#results .key")!.hidden = false;
+  $<HTMLButtonElement>("readBtn").replaceChildren(iconEl("play", 16), " ", el("span", { textContent: "Read aloud" }));
+  transcriptionEl.replaceChildren(markUp(shown.text, shown.issues));
+}
+
+const MARK: Record<string, string> = { ok: "✓", warn: "!", bad: "✕", info: "i" };
+
+function renderCodes(reports: CodeReport[]) {
+  const panel = $("codesPanel");
+  panel.hidden = reports.length === 0;
+  $("codesCount").textContent = reports.length ? `${reports.length} FOUND` : "";
+  $("codesList").replaceChildren(
+    ...reports.map((r) => {
+      const bad = r.checks.some((c) => c.state === "bad");
+      const warn = r.checks.some((c) => c.state === "warn");
+      const actions = el("div", { className: "actions" });
+      if (r.link) actions.append(el("a", { className: "btn small", href: r.link, target: "_blank", rel: "noopener" }, iconEl("external", 16), "Open link"));
+      const copy = el("button", { className: "btn small" }, iconEl("copy", 16), "Copy");
+      copy.onclick = () => copyText(copy, r.raw);
+      actions.append(copy);
+      return el(
+        "li",
+        { className: "code-row" },
+        el("div", { className: "code-head" }, el("span", { className: `tag ${bad ? "m" : warn ? "y" : "c"}`, textContent: r.format }), el("span", { className: "code-raw", textContent: r.raw })),
+        el("ul", { className: "checks" }, ...r.checks.map((c) => el("li", { className: c.state }, el("b", { textContent: MARK[c.state] }), c.text))),
+        actions,
+      );
+    }),
+  );
 }
 
 /** The proof with editor's marks: errors struck with the fix written in, warnings underlined. */
