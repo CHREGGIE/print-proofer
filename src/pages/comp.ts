@@ -23,11 +23,21 @@ interface Capture {
 let competitors: Competitor[] = [];
 let captures: Capture[] = [];
 let current: Competitor | null = null;
-let loaded = false;
+let ready: Promise<void> | null = null;
+
+/** Load saved data once; everything that changes data waits for it, so a late load can't overwrite new work. */
+const ensureLoaded = () =>
+  (ready ??= Promise.all([db.all<Competitor>("competitors"), db.all<Capture>("captures")])
+    .then(([c, k]) => {
+      competitors = c;
+      captures = k;
+    })
+    .catch(() => {}));
 
 export function initComp() {
   const nameInput = $<HTMLInputElement>("compName");
   const add = async () => {
+    await ensureLoaded();
     const name = nameInput.value.trim();
     if (!name) return;
     const c: Competitor = { id: db.newId(), name, created: Date.now() };
@@ -63,10 +73,7 @@ export function initComp() {
 }
 
 export async function showComp() {
-  if (!loaded) {
-    loaded = true;
-    [competitors, captures] = await Promise.all([db.all<Competitor>("competitors"), db.all<Capture>("captures")]).catch(() => [[], []] as [Competitor[], Capture[]]);
-  }
+  await ensureLoaded();
   current ? renderDetail() : renderList();
 }
 
@@ -178,6 +185,7 @@ function renderDetail() {
 }
 
 async function addCaptures(files: File[], c: Competitor) {
+  await ensureLoaded();
   const status = $("compStatus");
   let i = 0;
   for (const f of files) {

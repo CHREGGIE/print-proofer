@@ -25,9 +25,10 @@
 
     <nav class="tabbar" aria-label="Sections">
       <button data-page="proof" class="active">PROOF</button>
-      <button data-page="shots">SCREENSHOTS</button>
+      <button data-page="shots">SHOTS</button>
       <button data-page="video">VIDEO</button>
       <button data-page="comp">RIVALS</button>
+      <button data-page="colors">COLORS</button>
     </nav>
 
     <main>
@@ -221,6 +222,53 @@
           <p id="compStatus" class="meta"></p>
           <div id="compChanges"></div>
           <div id="compTimeline"></div>
+        </section>
+      </section>
+      <!-- ============ COLORS ============ -->
+      <section id="page-colors" class="page" hidden>
+        <div class="title-row">
+          <h1>Colors</h1>
+          <p class="sub">Pull the palette out of a logo, flyer or photo, with HEX, RGB and CMYK for the printer.</p>
+        </div>
+        <section class="sheet">
+          <div class="slot-title">Match the ink</div>
+          <p class="slot-text">Photograph a logo, a sign or a printed piece, or choose an image.</p>
+          <div class="btn-row">
+            <label class="btn primary">
+              <i data-icon="camera" data-size="20"></i> Take photo
+              <input id="palCamera" type="file" accept="image/*" capture="environment" hidden />
+            </label>
+            <label class="btn">
+              <i data-icon="image" data-size="20"></i> Choose
+              <input id="palFile" type="file" accept="image/*" hidden />
+            </label>
+          </div>
+          <label class="row-setting on-paper">
+            <span>Ignore the background</span>
+            <input id="palNoBg" type="checkbox" role="switch" />
+          </label>
+          <div class="row-setting on-paper">
+            <span>How many colors</span>
+            <select id="palCount">
+              <option value="4">4</option>
+              <option value="6" selected>6</option>
+              <option value="8">8</option>
+              <option value="10">10</option>
+            </select>
+          </div>
+        </section>
+
+        <section id="palResults" hidden>
+          <section class="sheet pal-preview">
+            <canvas id="palCanvas"></canvas>
+            <div class="pal-bar" id="palBar"></div>
+            <p class="meta">Tap the picture to sample any spot.</p>
+          </section>
+          <section class="panel flush">
+            <header class="panel-head"><h2>Palette</h2><button id="palCopy" class="btn small"><i data-icon="copy" data-size="16"></i> Copy all</button></header>
+            <ul id="palList" class="list swatches"></ul>
+          </section>
+          <p class="meta pal-note">CMYK values are a simple conversion, not a calibrated profile. Confirm with your printer before a big run.</p>
         </section>
       </section>
     </main>

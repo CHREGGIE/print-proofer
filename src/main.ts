@@ -11,6 +11,7 @@ import { initProof, addImages, addSharedText } from "./pages/proof";
 import { initShots, showShots } from "./pages/shots";
 import { initVideo } from "./pages/video";
 import { initComp, showComp } from "./pages/comp";
+import { initColors } from "./pages/colors";
 
 hydrateIcons();
 
@@ -61,6 +62,7 @@ initProof({ openSettings });
 initShots();
 initVideo();
 initComp();
+initColors();
 showPage(settings.raw.get("pp.tab") || "proof");
 
 // ---------- things shared into the app ----------

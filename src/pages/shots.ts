@@ -28,7 +28,7 @@ interface StoredWebShot {
 
 let shots: Shot[] = [];
 let filter: Category | "all" = "all";
-let loaded = false;
+let ready: Promise<void> | null = null;
 let scanning = false;
 
 const search = $<HTMLInputElement>("shotSearch");
@@ -63,11 +63,11 @@ export function initShots() {
 
 /** Called when the tab is opened. */
 export async function showShots() {
-  if (!loaded) {
-    loaded = true;
-    await loadAll();
+  if (!ready) {
+    ready = loadAll();
+    await ready;
     if (isNative) scanNow(false);
-  }
+  } else await ready;
   render();
 }
 
@@ -127,6 +127,7 @@ async function scanNow(userAsked: boolean) {
 }
 
 async function addWebImages(files: File[]) {
+  await (ready ??= loadAll());
   let i = 0;
   for (const f of files) {
     i++;

@@ -100,7 +100,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   height: calc(var(--tabbar) + env(safe-area-inset-bottom));
   padding: 0 8px env(safe-area-inset-bottom);
   display: grid;
-  grid-template-columns: 0.9fr 1.4fr 0.9fr 0.9fr;
+  grid-template-columns: repeat(5, 1fr);
   background: #000;
   border-top: 1px solid #222;
 }
@@ -131,6 +131,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .tabbar button[data-page="shots"].active::before { background: var(--y); }
 .tabbar button[data-page="video"].active::before { background: var(--c); }
 .tabbar button[data-page="comp"].active::before { background: var(--k); }
+.tabbar button[data-page="colors"].active::before { background: linear-gradient(90deg, var(--c) 0 25%, var(--m) 25% 50%, var(--y) 50% 75%, var(--k) 75%); }
 
 main {
   max-width: 640px;
@@ -530,6 +531,32 @@ video { width: 100%; max-height: 46vh; margin-top: 18px; background: #000; displ
 .capture summary { color: var(--paper-muted); cursor: pointer; font-size: 14px; font-weight: 600; }
 .capture .textblock { margin-top: 8px; font-size: 14px; color: var(--paper-muted); }
 .capture .icon-btn.small { color: var(--paper-muted); }
+
+/* ---------------- colors ---------------- */
+.row-setting.on-paper { cursor: pointer; }
+.pal-preview canvas { display: block; width: 100%; height: auto; cursor: crosshair; touch-action: manipulation; }
+.pal-bar { display: flex; height: 28px; margin: 14px 0 10px; }
+.pal-bar i { min-width: 6px; }
+.swatches > li { display: grid; grid-template-columns: 76px 1fr; gap: 16px; padding: 16px 18px; }
+.swatches .chip-block { width: 76px; height: 96px; border: 3px solid var(--paper); }
+.swatches .hex {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font-family: var(--display);
+  font-size: 26px;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+}
+.swatches .hex .ic { color: var(--faint); }
+.swatches .vals { font-family: var(--mono); font-size: 12.5px; color: #c9c9c9; margin-top: 6px; line-height: 1.6; }
+.swatches .note { margin-top: 6px; font-size: 13px; color: #ff5cb8; }
+.swatch-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pal-note { margin-top: 4px; }
 
 /* ---------------- settings ---------------- */
 dialog {

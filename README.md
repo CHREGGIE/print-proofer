@@ -7,6 +7,7 @@ An Android app (and installable web app) that reads text with your phone's camer
 | **✔ Proof** | Take a photo or screenshot of anything before it goes to print. It flags spelling mistakes, grammar slips, a weekday that doesn't match the date, a phone number missing a digit, broken emails or links, and the same name or number written two ways. Each problem shows as *wrong → right*. |
 | **🗂️ Screenshots** | *Screenshot memory.* Every screenshot on the phone is read and made searchable, then filed automatically as a 🧾 receipt (with its total), a 📦 tracking number (with a Track button), 💻 a code snippet, or other. New screenshots can be indexed in the background about once an hour. |
 | **🎬 Video** | Pull on-screen text out of a video (tutorials, ads, screen recordings): tool and product names, typed prompts, prices, offers, promo codes and links, each with its timestamp. These are the things transcripts miss. |
+| **🎨 Colors** | Pull the palette out of a logo, flyer or photo: each colour with HEX, RGB and CMYK, how much of the image it covers, a plain name, and print notes (bright screen colours that will print duller, near-blacks that need a rich black). Tap the picture to sample any spot. |
 | **📈 Competitors** | Photograph competitors' ads, flyers, menus and storefront signs over time. Prices, offers and promo codes are pulled out, and the app shows what changed since the last capture. |
 
 ## Works without Claude
@@ -51,6 +52,17 @@ python tools/proofread.py flyer.jpg --notes "Bella's Bakery"
 
 You also need Tesseract and Java; the setup notes are at the top of the script.
 
+## Colour palettes on a computer (Python)
+
+`tools/palette.py` gives the same palette as the Colors tab, from the command line:
+
+```bash
+pip install pillow
+python tools/palette.py logo.png                   # table with swatches, HEX, CMYK, notes
+python tools/palette.py flyer.jpg -n 8 --no-background --html palette.html   # printable swatch sheet
+python tools/palette.py logo.png --json            # for other tools
+```
+
 ## Web version
 
 The same app runs in a browser and can be installed from Chrome (**⋮ → Add to Home screen**). The `deploy.yml` workflow publishes it to GitHub Pages. Background screenshot indexing only works in the Android app; in the browser you add screenshots by hand.
@@ -71,4 +83,6 @@ npm run android:sync   # build + copy into the Android project
 | `src/proof.ts` | Optional Claude deep check and video summary |
 | `src/pages/*` | The four tabs |
 | `android/app/src/main/java/com/printproofer/app/` | Native code: ML Kit OCR, screenshot indexer (SQLite), hourly background worker, share-sheet handling |
+| `src/palette.ts` | Colour palette extraction (k-means in Lab, blend filtering, CMYK, print notes) |
 | `tools/proofread.py` | Desktop proofreader in Python |
+| `tools/palette.py` | Desktop colour palette extractor in Python |
